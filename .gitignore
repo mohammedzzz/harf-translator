@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# electron-builder output (installers, unpacked app, blockmaps, debug logs)
+dist/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+*.swp

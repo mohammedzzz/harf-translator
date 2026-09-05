@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; script-src 'self';" />
+<!-- Runs immediately after CSP (so it's covered by script-src 'self') and
+     before any stylesheet link. A parser-blocking <script> is held back
+     until any preceding blocking stylesheet has loaded, so placing this
+     after the Google Fonts / styles.css links would tie the dark-theme
+     flag to a network fetch and defeat the point of applying it pre-paint. -->
+<script src="theme-init.js"></script>
+<title>حرف — أداة الترجمة</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@300;400;500;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="grain"></div>
+
+<header class="topbar">
+  <div class="wordmark">
+    <span class="wordmark-ar">حرف<span class="dot">.</span></span>
+    <span class="wordmark-sub">أداة الترجمة</span>
+  </div>
+  <div class="topbar-end">
+    <span class="build-pill">الإصدار 0.1 · تجريبي</span>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="sidebar" aria-label="التنقل الرئيسي">
+    <ul class="nav-list">
+      <li>
+        <button class="nav-item is-active" data-target="dashboard" type="button">
+          <span class="nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>
+          </span>
+          <span class="nav-label">لوحة التحكم</span>
+        </button>
+      </li>
+      <li>
+        <button class="nav-item" data-target="projects" type="button">
+          <span class="nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H10l2 2.5h5.5A2.5 2.5 0 0 1 20 9v8.5A2.5 2.5 0 0 1 17.5 20h-11A2.5 2.5 0 0 1 4 17.5v-11Z"/></svg>
+          </span>
+          <span class="nav-label">المشاريع</span>
+        </button>
+      </li>
+      <li>
+        <button class="nav-item" data-target="requests" type="button">
+          <span class="nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v10.5a2 2 0 0 1-2 2h-5l-3.5 3v-3H6a2 2 0 0 1-2-2V5Z"/><path d="M8 9h8M8 12.5h5"/></svg>
+          </span>
+          <span class="nav-label">طلبات الترجمة</span>
+        </button>
+      </li>
+      <li>
+        <button class="nav-item" data-target="translated-games" type="button">
+          <span class="nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v10m0 0-4-4m4 4 4-4"/><path d="M5 16v2.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V16"/></svg>
+          </span>
+          <span class="nav-label">الألعاب المترجمة</span>
+        </button>
+      </li>
+      <li>
+        <button class="nav-item" data-target="settings" type="button">
+          <span class="nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V19.7a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.04-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.04H4.3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 5.93 6.5a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H10.4a1.7 1.7 0 0 0 1.04-1.56V.4"/></svg>
+          </span>
+          <span class="nav-label">الإعدادات</span>
+        </button>
+      </li>
+    </ul>
+
+    <div class="sidebar-foot">
+      <p>فريق حرف التطوعي</p>
+      <p class="muted">ترجمة الألعاب بلمسة إنسانية</p>
+    </div>
+  </nav>
+
+  <main class="content">
+
+    <!-- ===================== DASHBOARD ===================== -->
+    <section class="view is-active" id="view-dashboard">
+      <div class="section-head">
+        <p class="eyebrow">نظرة عامة</p>
+        <h1>لوحة التحكم</h1>
+        <p class="lede">ملخص سريع لنشاط الفريق والمشاريع الجارية هذا الأسبوع.</p>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H10l2 2.5h5.5A2.5 2.5 0 0 1 20 9v8.5A2.5 2.5 0 0 1 17.5 20h-11A2.5 2.5 0 0 1 4 17.5v-11Z"/></svg>
+          </div>
+          <p class="stat-value">7</p>
+          <p class="stat-label">مشاريع نشطة</p>
+          <p class="stat-delta up">+2 هذا الشهر</p>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5a1 1 0 0 1 1-1h9l6 6v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1Z"/><path d="M14 4v5h5M8 13h8M8 16.5h5"/></svg>
+          </div>
+          <p class="stat-value">128,450</p>
+          <p class="stat-label">كلمة مُترجمة</p>
+          <p class="stat-delta up">+6,120 هذا الأسبوع</p>
+        </div>
+        <div class="stat-card cta">
+          <p class="cta-title">حاب تنضم للفريق؟</p>
+          <p class="cta-text">نبحث دائمًا عن مترجمين ومراجعين يشاركوننا الشغف باللغة والألعاب.</p>
+          <button class="btn btn-primary btn-small" type="button" id="join-team-btn">قدم طلبك</button>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v10.5a2 2 0 0 1-2 2h-5l-3.5 3v-3H6a2 2 0 0 1-2-2V5Z"/></svg>
+          </div>
+          <p class="stat-value">5</p>
+          <p class="stat-label">طلبات بانتظار المراجعة</p>
+          <p class="stat-delta warn">أقدمها منذ 4 أيام</p>
+        </div>
+      </div>
+
+      <div class="dash-grid">
+        <div class="panel">
+          <div class="panel-head">
+            <h2>المشاريع الأكثر نشاطًا</h2>
+            <button class="link-btn" type="button" data-goto="projects">عرض الكل</button>
+          </div>
+          <ul class="mini-progress-list">
+            <li>
+              <div class="mini-progress-top">
+                <span class="mini-title"><span class="en-title" dir="ltr">Ashfall Reach</span></span>
+                <span class="mini-pct mono">72%</span>
+              </div>
+              <div class="progress-track"><div class="progress-fill" style="width:72%"></div></div>
+            </li>
+            <li>
+              <div class="mini-progress-top">
+                <span class="mini-title"><span class="en-title" dir="ltr">Echoes of Wren</span></span>
+                <span class="mini-pct mono">45%</span>
+              </div>
+              <div class="progress-track"><div class="progress-fill" style="width:45%"></div></div>
+            </li>
+            <li>
+              <div class="mini-progress-top">
+                <span class="mini-title"><span class="en-title" dir="ltr">Duneshade</span></span>
+                <span class="mini-pct mono">93%</span>
+              </div>
+              <div class="progress-track"><div class="progress-fill" style="width:93%"></div></div>
+            </li>
+            <li>
+              <div class="mini-progress-top">
+                <span class="mini-title"><span class="en-title" dir="ltr">Mistfall Corridor</span></span>
+                <span class="mini-pct mono">18%</span>
+              </div>
+              <div class="progress-track"><div class="progress-fill" style="width:18%"></div></div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>التعليقات</h2>
+          </div>
+          <ul class="comment-list">
+            <li>
+              <span class="comment-avatar">ن</span>
+              <div>
+                <p><strong>نور ب.</strong> أعتقد أن ترجمة سطر «لا عودة من هنا» في <span class="en-title" dir="ltr">Ashfall Reach</span> حرفية أكثر من اللازم، ممكن نراجعها؟</p>
+                <p class="muted small">قبل ساعتين</p>
+              </div>
+            </li>
+            <li>
+              <span class="comment-avatar">ي</span>
+              <div>
+                <p><strong>يوسف م.</strong> خلصت مراجعة الفصل الثاني من <span class="en-title" dir="ltr">Echoes of Wren</span>، الترجمة ممتازة هالمرة</p>
+                <p class="muted small">قبل 5 ساعات</p>
+              </div>
+            </li>
+            <li>
+              <span class="comment-avatar">س</span>
+              <div>
+                <p><strong>سارة ك.</strong> أحد يعرف هل <span class="en-title" dir="ltr">Duneshade</span> يدعم تغيير الخط بعد التصدير؟ واجهتني مشكلة بالتشكيل</p>
+                <p class="muted small">أمس، 10:14 م</p>
+              </div>
+            </li>
+            <li>
+              <span class="comment-avatar">ع</span>
+              <div>
+                <p><strong>عبدالله ح.</strong> شكرًا للفريق كله على الجهد بـ<span class="en-title" dir="ltr">Mistfall Corridor</span>، أخيرًا قدرت ألعبها بالعربي مع أهلي</p>
+                <p class="muted small">منذ يومين</p>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== PROJECTS ===================== -->
+    <section class="view" id="view-projects">
+      <div class="section-head">
+        <p class="eyebrow">الأعمال الجارية</p>
+        <h1>المشاريع</h1>
+        <p class="lede">جميع مشاريع الترجمة الحالية والمنتهية التي يعمل عليها الفريق.</p>
+      </div>
+
+      <div class="project-grid">
+
+        <article class="project-card">
+          <div class="project-card-top">
+            <div>
+              <h3><span class="en-title" dir="ltr">Ashfall Reach</span></h3>
+              <p class="tag">Unity</p>
+            </div>
+            <span class="badge badge-mid">قيد الترجمة</span>
+          </div>
+          <div class="progress-track"><div class="progress-fill" style="width:72%"></div></div>
+          <div class="project-meta">
+            <span class="mono">72%</span>
+            <span>6 مترجمين · بدأ 12 مارس</span>
+          </div>
+        </article>
+
+        <article class="project-card">
+          <div class="project-card-top">
+            <div>
+              <h3><span class="en-title" dir="ltr">Echoes of Wren</span></h3>
+              <p class="tag">Unreal Engine</p>
+            </div>
+            <span class="badge badge-mid">قيد الترجمة</span>
+          </div>
+          <div class="progress-track"><div class="progress-fill" style="width:45%"></div></div>
+          <div class="project-meta">
+            <span class="mono">45%</span>
+            <span>4 مترجمين · بدأ 2 أبريل</span>
+          </div>
+        </article>
+
+        <article class="project-card">
+          <div class="project-card-top">
+            <div>
+              <h3><span class="en-title" dir="ltr">Duneshade</span></h3>
+              <p class="tag">RPG Maker</p>
+            </div>
+            <span class="badge badge-good">مكتمل</span>
+          </div>
+          <div class="progress-track"><div class="progress-fill" style="width:100%"></div></div>
+          <div class="project-meta">
+            <span class="mono">100%</span>
+            <span>3 مترجمين · انتهى 18 يناير</span>
+          </div>
+        </article>
+
+        <article class="project-card">
+          <div class="project-card-top">
+            <div>
+              <h3><span class="en-title" dir="ltr">Mistfall Corridor</span></h3>
+              <p class="tag">Godot</p>
+            </div>
+            <span class="badge badge-mid">قيد الترجمة</span>
+          </div>
+          <div class="progress-track"><div class="progress-fill" style="width:18%"></div></div>
+          <div class="project-meta">
+            <span class="mono">18%</span>
+            <span>2 مترجمين · بدأ 30 أغسطس</span>
+          </div>
+        </article>
+
+        <article class="project-card">
+          <div class="project-card-top">
+            <div>
+              <h3><span class="en-title" dir="ltr">Lantern's Shadow</span></h3>
+              <p class="tag">محرك مخصص</p>
+            </div>
+            <span class="badge badge-bad">متوقف</span>
+          </div>
+          <div class="progress-track"><div class="progress-fill" style="width:9%"></div></div>
+          <div class="project-meta">
+            <span class="mono">9%</span>
+            <span>بانتظار أدوات استخراج النصوص</span>
+          </div>
+        </article>
+
+        <article class="project-card">
+          <div class="project-card-top">
+            <div>
+              <h3><span class="en-title" dir="ltr">Orchard Keeper</span></h3>
+              <p class="tag">Unity</p>
+            </div>
+            <span class="badge badge-neutral">لم يبدأ</span>
+          </div>
+          <div class="progress-track"><div class="progress-fill" style="width:0%"></div></div>
+          <div class="project-meta">
+            <span class="mono">0%</span>
+            <span>في قائمة الانتظار</span>
+          </div>
+        </article>
+
+      </div>
+    </section>
+
+    <!-- ===================== TRANSLATION REQUESTS ===================== -->
+    <section class="view" id="view-requests">
+      <div class="section-head">
+        <div class="section-head-row">
+          <div>
+            <p class="eyebrow">صندوق الوارد</p>
+            <h1>طلبات الترجمة</h1>
+            <p class="lede">طلبات مقترحة من المجتمع لترجمة ألعاب جديدة.</p>
+          </div>
+          <button class="btn btn-primary" type="button" id="toggle-request-form">+ طلب جديد</button>
+        </div>
+      </div>
+
+      <form class="panel request-form" id="request-form" hidden>
+        <div class="panel-head">
+          <h2>تقديم طلب ترجمة</h2>
+        </div>
+        <div class="form-grid">
+          <label class="field">
+            <span>اسم اللعبة</span>
+            <input type="text" placeholder="مثال: Ashfall Reach" />
+          </label>
+          <label class="field">
+            <span>المحرك</span>
+            <input type="text" placeholder="مثال: Unity" />
+          </label>
+          <label class="field field-wide">
+            <span>رابط اللعبة (Steam أو غيره)</span>
+            <input type="text" placeholder="https://" />
+          </label>
+          <label class="field field-wide">
+            <span>ملاحظات إضافية</span>
+            <textarea rows="3" placeholder="أي تفاصيل تساعد الفريق على تقييم الطلب"></textarea>
+          </label>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" id="cancel-request-form">إلغاء</button>
+          <button type="submit" class="btn btn-primary">إرسال الطلب</button>
+        </div>
+        <p class="form-note" id="form-note" hidden>تم استلام الطلب مبدئيًا (تجريبي، لا يُخزَّن بعد).</p>
+      </form>
+
+      <div class="req-list">
+        <div class="req-row req-row-head">
+          <span>اللعبة</span>
+          <span>مقدّم الطلب</span>
+          <span>المحرك</span>
+          <span>الأولوية</span>
+          <span>الحالة</span>
+          <span>التاريخ</span>
+        </div>
+
+        <div class="req-row">
+          <span class="req-game"><span class="en-title" dir="ltr">Lantern's Shadow</span></span>
+          <span>مجتمع Discord</span>
+          <span>محرك مخصص</span>
+          <span><span class="pill pill-bad">عالية</span></span>
+          <span><span class="pill pill-mid">قيد الدراسة</span></span>
+          <span class="mono">2026-09-01</span>
+        </div>
+        <div class="req-row">
+          <span class="req-game"><span class="en-title" dir="ltr">Orchard Keeper</span></span>
+          <span>عمر ت.</span>
+          <span>Unity</span>
+          <span><span class="pill pill-mid">متوسطة</span></span>
+          <span><span class="pill pill-good">مقبول</span></span>
+          <span class="mono">2026-08-27</span>
+        </div>
+        <div class="req-row">
+          <span class="req-game"><span class="en-title" dir="ltr">Rivermark</span></span>
+          <span>لمى س.</span>
+          <span>Unreal Engine</span>
+          <span><span class="pill pill-mid">متوسطة</span></span>
+          <span><span class="pill pill-neutral">بانتظار المراجعة</span></span>
+          <span class="mono">2026-08-25</span>
+        </div>
+        <div class="req-row">
+          <span class="req-game"><span class="en-title" dir="ltr">Glasspire</span></span>
+          <span>مجتمع Discord</span>
+          <span>Godot</span>
+          <span><span class="pill pill-neutral">منخفضة</span></span>
+          <span><span class="pill pill-neutral">بانتظار المراجعة</span></span>
+          <span class="mono">2026-08-22</span>
+        </div>
+        <div class="req-row">
+          <span class="req-game"><span class="en-title" dir="ltr">Ashenkeep</span></span>
+          <span>بدر ح.</span>
+          <span>RPG Maker</span>
+          <span><span class="pill pill-bad">عالية</span></span>
+          <span><span class="pill pill-bad">مرفوض</span></span>
+          <span class="mono">2026-08-14</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== TRANSLATED GAMES ===================== -->
+    <section class="view" id="view-translated-games">
+      <div class="section-head">
+        <p class="eyebrow">الأعمال المنجزة</p>
+        <h1>الألعاب المترجمة</h1>
+        <p class="lede">مشاريع اكتملت ترجمتها بالكامل ومتاحة للتحميل.</p>
+      </div>
+
+      <div class="project-grid">
+
+        <article class="project-card game-card">
+          <div class="project-card-top">
+            <div>
+              <h3><span class="en-title" dir="ltr">Duneshade</span></h3>
+              <p class="tag">RPG Maker</p>
+            </div>
+            <span class="badge badge-good">مكتمل</span>
+          </div>
+          <div class="project-meta">
+            <span>الإصدار 1.2 · ترجمت في 18 يناير 2025</span>
+            <span class="mono">84 MB</span>
+          </div>
+          <div class="game-card-actions">
+            <button class="btn btn-primary btn-download" type="button" data-game="Duneshade">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v10m0 0-4-4m4 4 4-4"/><path d="M5 16v2.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V16"/></svg>
+              تحميل الترجمة
+            </button>
+            <p class="form-note download-note" hidden>جارٍ تحضير ملف الترجمة…</p>
+          </div>
+        </article>
+
+        <article class="project-card game-card">
+          <div class="project-card-top">
+            <div>
+              <h3><span class="en-title" dir="ltr">Windfall Hollow</span></h3>
+              <p class="tag">Unity</p>
+            </div>
+            <span class="badge badge-good">مكتمل</span>
+          </div>
+          <div class="project-meta">
+            <span>الإصدار 1.0 · ترجمت في 2 أبريل 2025</span>
+            <span class="mono">512 MB</span>
+          </div>
+          <div class="game-card-actions">
+            <button class="btn btn-primary btn-download" type="button" data-game="Windfall Hollow">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v10m0 0-4-4m4 4 4-4"/><path d="M5 16v2.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V16"/></svg>
+              تحميل الترجمة
+            </button>
+            <p class="form-note download-note" hidden>جارٍ تحضير ملف الترجمة…</p>
+          </div>
+        </article>
+
+        <article class="project-card game-card">
+          <div class="project-card-top">
+            <div>
+              <h3><span class="en-title" dir="ltr">Copper Vale</span></h3>
+              <p class="tag">Godot</p>
+            </div>
+            <span class="badge badge-good">مكتمل</span>
+          </div>
+          <div class="project-meta">
+            <span>الإصدار 2.1 · ترجمت في 30 يونيو 2025</span>
+            <span class="mono">210 MB</span>
+          </div>
+          <div class="game-card-actions">
+            <button class="btn btn-primary btn-download" type="button" data-game="Copper Vale">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v10m0 0-4-4m4 4 4-4"/><path d="M5 16v2.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V16"/></svg>
+              تحميل الترجمة
+            </button>
+            <p class="form-note download-note" hidden>جارٍ تحضير ملف الترجمة…</p>
+          </div>
+        </article>
+
+        <article class="project-card game-card">
+          <div class="project-card-top">
+            <div>
+              <h3><span class="en-title" dir="ltr">Last Ember</span></h3>
+              <p class="tag">Unreal Engine</p>
+            </div>
+            <span class="badge badge-good">مكتمل</span>
+          </div>
+          <div class="project-meta">
+            <span>الإصدار 1.4 · ترجمت في 15 نوفمبر 2025</span>
+            <span class="mono">1.3 GB</span>
+          </div>
+          <div class="game-card-actions">
+            <button class="btn btn-primary btn-download" type="button" data-game="Last Ember">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v10m0 0-4-4m4 4 4-4"/><path d="M5 16v2.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V16"/></svg>
+              تحميل الترجمة
+            </button>
+            <p class="form-note download-note" hidden>جارٍ تحضير ملف الترجمة…</p>
+          </div>
+        </article>
+
+        <article class="project-card game-card">
+          <div class="project-card-top">
+            <div>
+              <h3><span class="en-title" dir="ltr">Stonebrook Requiem</span></h3>
+              <p class="tag">Unity</p>
+            </div>
+            <span class="badge badge-good">مكتمل</span>
+          </div>
+          <div class="project-meta">
+            <span>الإصدار 1.0 · ترجمت في 9 فبراير 2026</span>
+            <span class="mono">640 MB</span>
+          </div>
+          <div class="game-card-actions">
+            <button class="btn btn-primary btn-download" type="button" data-game="Stonebrook Requiem">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v10m0 0-4-4m4 4 4-4"/><path d="M5 16v2.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V16"/></svg>
+              تحميل الترجمة
+            </button>
+            <p class="form-note download-note" hidden>جارٍ تحضير ملف الترجمة…</p>
+          </div>
+        </article>
+
+      </div>
+    </section>
+
+    <!-- ===================== SETTINGS ===================== -->
+    <section class="view" id="view-settings">
+      <div class="section-head">
+        <p class="eyebrow">تفضيلاتك</p>
+        <h1>الإعدادات</h1>
+        <p class="lede">إعدادات محلية لهذا الجهاز فقط، لا تؤثر على بقية الفريق.</p>
+      </div>
+
+      <form class="settings-form" id="settings-form">
+
+        <div class="panel">
+          <div class="panel-head"><h2>الملف الشخصي</h2></div>
+          <div class="form-grid">
+            <label class="field">
+              <span>الاسم الكامل</span>
+              <input type="text" value="سارة كمال" />
+            </label>
+            <label class="field">
+              <span>الاسم المستعار</span>
+              <input type="text" value="sarah.k" />
+            </label>
+            <label class="field field-wide">
+              <span>البريد الإلكتروني</span>
+              <input type="email" value="sarah.k@harf.team" />
+            </label>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>الإشعارات</h2></div>
+          <div class="toggle-list">
+            <label class="toggle-row">
+              <span>إشعار عند وصول طلب ترجمة جديد</span>
+              <span class="switch"><input type="checkbox" checked /><span class="switch-track"></span></span>
+            </label>
+            <label class="toggle-row">
+              <span>إشعار عند اكتمال مراجعة فصل</span>
+              <span class="switch"><input type="checkbox" checked /><span class="switch-track"></span></span>
+            </label>
+            <label class="toggle-row">
+              <span>ملخص أسبوعي عبر البريد الإلكتروني</span>
+              <span class="switch"><input type="checkbox" /><span class="switch-track"></span></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>المظهر</h2></div>
+          <div class="radio-list">
+            <label class="radio-row">
+              <input type="radio" name="theme" value="light" checked />
+              <span>فاتح (ورقي)</span>
+            </label>
+            <label class="radio-row">
+              <input type="radio" name="theme" value="dark" />
+              <span>داكن</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">حفظ التغييرات</button>
+          <p class="form-note" id="settings-note" hidden>تم حفظ الإعدادات محليًا.</p>
+        </div>
+      </form>
+    </section>
+
+  </main>
+</div>
+
+<script src="renderer.js"></script>
+</body>
+</html>

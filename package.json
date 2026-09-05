@@ -1,0 +1,54 @@
+{
+  "name": "harf-translator",
+  "version": "0.1.0",
+  "description": "Harf Translator — internal desktop tool for the Harf volunteer Arabic game translation team.",
+  "main": "main.js",
+  "author": "Harf Team",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^32.0.0",
+    "electron-builder": "^26.15.3"
+  },
+  "allowScripts": {
+    "electron@32.3.3": true,
+    "electron-winstaller@5.4.0": true
+  },
+  "build": {
+    "appId": "team.harf.translator",
+    "productName": "Harf Translator",
+    "copyright": "Copyright © Harf Team",
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "حرف — أداة الترجمة",
+      "artifactName": "Harf-Translator-Setup-${version}.${ext}"
+    }
+  }
+}
