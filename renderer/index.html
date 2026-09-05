@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8" />
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; script-src 'self';" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none';" />
 <!-- Runs immediately after CSP (so it's covered by script-src 'self') and
      before any stylesheet link. A parser-blocking <script> is held back
      until any preceding blocking stylesheet has loaded, so placing this
@@ -25,8 +25,42 @@
   </div>
   <div class="topbar-end">
     <span class="build-pill">الإصدار 0.1 · تجريبي</span>
+    <button class="btn btn-ghost btn-small" type="button" id="guest-auth-btn">تسجيل الدخول</button>
+    <div class="user-chip" id="user-chip" hidden>
+      <span class="user-chip-avatar" id="user-chip-avatar">س</span>
+      <span class="user-chip-name" id="user-chip-name">سارة كمال</span>
+      <button class="link-btn" type="button" id="logout-btn">تسجيل الخروج</button>
+    </div>
   </div>
 </header>
+
+<!-- ===================== LOGIN MODAL (mock — no real backend) ===================== -->
+<div class="modal-overlay" id="login-overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="login-title">
+    <div class="modal-head">
+      <h2 id="login-title">تسجيل الدخول</h2>
+      <button class="modal-close" type="button" id="login-close" aria-label="إغلاق">×</button>
+    </div>
+    <p class="modal-lede" id="login-lede">سجّل الدخول لإكمال هذا الإجراء.</p>
+    <form id="login-form" novalidate>
+      <div class="form-grid">
+        <label class="field field-wide">
+          <span>البريد الإلكتروني</span>
+          <input type="email" id="login-email" placeholder="you@example.com" autocomplete="off" />
+        </label>
+        <label class="field field-wide">
+          <span>كلمة المرور</span>
+          <input type="password" id="login-password" placeholder="••••••••" autocomplete="off" />
+        </label>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-ghost" id="login-cancel">إلغاء</button>
+        <button type="submit" class="btn btn-primary">تسجيل الدخول</button>
+      </div>
+      <p class="modal-hint">نموذج تجريبي فقط — لا يوجد تحقق فعلي، أي بريد وكلمة مرور يعملان.</p>
+    </form>
+  </div>
+</div>
 
 <div class="shell">
   <nav class="sidebar" aria-label="التنقل الرئيسي">
@@ -110,6 +144,7 @@
           <p class="cta-title">حاب تنضم للفريق؟</p>
           <p class="cta-text">نبحث دائمًا عن مترجمين ومراجعين يشاركوننا الشغف باللغة والألعاب.</p>
           <button class="btn btn-primary btn-small" type="button" id="join-team-btn">قدم طلبك</button>
+          <p class="form-note cta-note" id="join-team-note" hidden>تم إرسال طلبك، بيتواصل معك الفريق قريبًا.</p>
         </div>
         <div class="stat-card">
           <div class="stat-icon" aria-hidden="true">
@@ -133,28 +168,28 @@
                 <span class="mini-title"><span class="en-title" dir="ltr">Ashfall Reach</span></span>
                 <span class="mini-pct mono">72%</span>
               </div>
-              <div class="progress-track"><div class="progress-fill" style="width:72%"></div></div>
+              <div class="progress-track"><div class="progress-fill" data-progress="72"></div></div>
             </li>
             <li>
               <div class="mini-progress-top">
                 <span class="mini-title"><span class="en-title" dir="ltr">Echoes of Wren</span></span>
                 <span class="mini-pct mono">45%</span>
               </div>
-              <div class="progress-track"><div class="progress-fill" style="width:45%"></div></div>
+              <div class="progress-track"><div class="progress-fill" data-progress="45"></div></div>
             </li>
             <li>
               <div class="mini-progress-top">
                 <span class="mini-title"><span class="en-title" dir="ltr">Duneshade</span></span>
                 <span class="mini-pct mono">93%</span>
               </div>
-              <div class="progress-track"><div class="progress-fill" style="width:93%"></div></div>
+              <div class="progress-track"><div class="progress-fill" data-progress="93"></div></div>
             </li>
             <li>
               <div class="mini-progress-top">
                 <span class="mini-title"><span class="en-title" dir="ltr">Mistfall Corridor</span></span>
                 <span class="mini-pct mono">18%</span>
               </div>
-              <div class="progress-track"><div class="progress-fill" style="width:18%"></div></div>
+              <div class="progress-track"><div class="progress-fill" data-progress="18"></div></div>
             </li>
           </ul>
         </div>
@@ -163,7 +198,11 @@
           <div class="panel-head">
             <h2>التعليقات</h2>
           </div>
-          <ul class="comment-list">
+          <form class="comment-composer" id="comment-form" novalidate>
+            <textarea id="comment-input" rows="2" placeholder="شارك ملاحظتك على أحد المشاريع..."></textarea>
+            <button class="btn btn-primary btn-small" type="submit">نشر</button>
+          </form>
+          <ul class="comment-list" id="comment-list">
             <li>
               <span class="comment-avatar">ن</span>
               <div>
@@ -215,7 +254,7 @@
             </div>
             <span class="badge badge-mid">قيد الترجمة</span>
           </div>
-          <div class="progress-track"><div class="progress-fill" style="width:72%"></div></div>
+          <div class="progress-track"><div class="progress-fill" data-progress="72"></div></div>
           <div class="project-meta">
             <span class="mono">72%</span>
             <span>6 مترجمين · بدأ 12 مارس</span>
@@ -230,7 +269,7 @@
             </div>
             <span class="badge badge-mid">قيد الترجمة</span>
           </div>
-          <div class="progress-track"><div class="progress-fill" style="width:45%"></div></div>
+          <div class="progress-track"><div class="progress-fill" data-progress="45"></div></div>
           <div class="project-meta">
             <span class="mono">45%</span>
             <span>4 مترجمين · بدأ 2 أبريل</span>
@@ -245,7 +284,7 @@
             </div>
             <span class="badge badge-good">مكتمل</span>
           </div>
-          <div class="progress-track"><div class="progress-fill" style="width:100%"></div></div>
+          <div class="progress-track"><div class="progress-fill" data-progress="100"></div></div>
           <div class="project-meta">
             <span class="mono">100%</span>
             <span>3 مترجمين · انتهى 18 يناير</span>
@@ -260,7 +299,7 @@
             </div>
             <span class="badge badge-mid">قيد الترجمة</span>
           </div>
-          <div class="progress-track"><div class="progress-fill" style="width:18%"></div></div>
+          <div class="progress-track"><div class="progress-fill" data-progress="18"></div></div>
           <div class="project-meta">
             <span class="mono">18%</span>
             <span>2 مترجمين · بدأ 30 أغسطس</span>
@@ -275,7 +314,7 @@
             </div>
             <span class="badge badge-bad">متوقف</span>
           </div>
-          <div class="progress-track"><div class="progress-fill" style="width:9%"></div></div>
+          <div class="progress-track"><div class="progress-fill" data-progress="9"></div></div>
           <div class="project-meta">
             <span class="mono">9%</span>
             <span>بانتظار أدوات استخراج النصوص</span>
@@ -290,7 +329,7 @@
             </div>
             <span class="badge badge-neutral">لم يبدأ</span>
           </div>
-          <div class="progress-track"><div class="progress-fill" style="width:0%"></div></div>
+          <div class="progress-track"><div class="progress-fill" data-progress="0"></div></div>
           <div class="project-meta">
             <span class="mono">0%</span>
             <span>في قائمة الانتظار</span>
@@ -313,24 +352,24 @@
         </div>
       </div>
 
-      <form class="panel request-form" id="request-form" hidden>
+      <form class="panel request-form" id="request-form" novalidate hidden>
         <div class="panel-head">
           <h2>تقديم طلب ترجمة</h2>
         </div>
         <div class="form-grid">
-          <label class="field">
+          <label class="field" data-field="اسم اللعبة">
             <span>اسم اللعبة</span>
-            <input type="text" placeholder="مثال: Ashfall Reach" />
+            <input type="text" id="req-game-name" required placeholder="مثال: Ashfall Reach" />
           </label>
-          <label class="field">
-            <span>المحرك</span>
+          <label class="field" data-field="المحرك">
+            <span>المحرك <span class="field-hint">(لو تعرفون)</span></span>
             <input type="text" placeholder="مثال: Unity" />
           </label>
-          <label class="field field-wide">
-            <span>رابط اللعبة (Steam أو غيره)</span>
+          <label class="field field-wide" data-field="رابط اللعبة">
+            <span>رابط اللعبة (Steam أو غيره) <span class="field-hint">(لو تعرفون)</span></span>
             <input type="text" placeholder="https://" />
           </label>
-          <label class="field field-wide">
+          <label class="field field-wide" data-field="ملاحظات إضافية">
             <span>ملاحظات إضافية</span>
             <textarea rows="3" placeholder="أي تفاصيل تساعد الفريق على تقييم الطلب"></textarea>
           </label>
@@ -339,6 +378,7 @@
           <button type="button" class="btn btn-ghost" id="cancel-request-form">إلغاء</button>
           <button type="submit" class="btn btn-primary">إرسال الطلب</button>
         </div>
+        <p class="form-note form-error" id="form-error" hidden></p>
         <p class="form-note" id="form-note" hidden>تم استلام الطلب مبدئيًا (تجريبي، لا يُخزَّن بعد).</p>
       </form>
 

@@ -27,6 +27,16 @@ function createWindow() {
 
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 
+  // Hardening: this window only ever needs to show its own bundled
+  // renderer/index.html. There is no legitimate reason for it to navigate
+  // anywhere else or to pop a second window/tab, so block both outright —
+  // this is a real app running on machines we don't control now, so we
+  // don't rely on there simply being no links in the UI today.
+  mainWindow.webContents.on('will-navigate', (event) => {
+    event.preventDefault();
+  });
+  mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });

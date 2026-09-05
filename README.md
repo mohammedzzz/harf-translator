@@ -16,6 +16,18 @@ note on the Translated Games cards, a light/dark theme toggle persisted to
 `localStorage`, a fake "settings saved" note) are implemented client-side
 in `renderer/renderer.js` for demonstration purposes only.
 
+Also mock, also client-side only: a login screen gates two actions
+(posting a Dashboard comment, and the "قدم طلبك" join-the-team CTA) behind
+a fake `localStorage`-backed sign-in — any email/password works, there is
+no real account system. The translation-request form is deliberately
+**not** gated; anyone can submit one, though it now blocks submission with
+an inline error until the required fields are actually filled in.
+
+The app is now packaged for distribution (see `build/`, and the `build`
+config + `dist` script in `package.json`); see `SECURITY.md` for what's
+hardened in the Electron shell and why, now that this runs on machines we
+don't control.
+
 ## Getting started
 
 ```
