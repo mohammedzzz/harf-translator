@@ -127,6 +127,30 @@
   // address, anything else) maps to the same generic Arabic message on
   // purpose: this never confirms or denies whether a given email already
   // has an account.
+  // Builds and persists a session object from a Supabase auth response body,
+  // then makes sure a `profiles` row exists for it. Shared by signIn (always
+  // has a session) and signUp (only has one when the project auto-confirms
+  // new signups — see below).
+  function storeSession(data) {
+    var session = {
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+      expires_at: Date.now() + (Number(data.expires_in) || 3600) * 1000,
+      user: data.user
+    };
+    writeSession(session);
+    return ensureProfile(session).then(function () {
+      return session;
+    });
+  }
+
+  // Resolves to { session } — session is set when the project auto-confirms
+  // new signups (Supabase returns a full access_token immediately, no email
+  // step at all), or null when email confirmation is still required (the
+  // caller should show a "check your email" message instead of entering the
+  // app). Checking this per-response, rather than assuming one or the
+  // other, means the UI keeps working correctly if that project setting is
+  // ever flipped back.
   function signUp(email, password, displayName) {
     return fetch(SUPABASE_URL + '/auth/v1/signup', {
       method: 'POST',
@@ -141,6 +165,13 @@
       return Promise.reject(
         new Error('تعذّر إنشاء الحساب، تحقق من البيانات أو جرّب تسجيل الدخول إذا كان لديك حساب')
       );
+    }).then(function (data) {
+      if (data && data.access_token && data.user) {
+        return storeSession(data).then(function (session) {
+          return { session: session };
+        });
+      }
+      return { session: null };
     });
   }
 
@@ -178,16 +209,7 @@
       if (!data || !data.access_token || !data.user) {
         throw new Error('بيانات الدخول غير صحيحة');
       }
-      var session = {
-        access_token: data.access_token,
-        refresh_token: data.refresh_token,
-        expires_at: Date.now() + (Number(data.expires_in) || 3600) * 1000,
-        user: data.user
-      };
-      writeSession(session);
-      return ensureProfile(session).then(function () {
-        return session;
-      });
+      return storeSession(data);
     });
   }
 

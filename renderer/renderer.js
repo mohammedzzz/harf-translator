@@ -1494,7 +1494,15 @@
         signupSubmit.disabled = true;
         signupSubmit.textContent = 'جارٍ الإنشاء...';
       }
-      window.HarfAuth.signUp(email, password, name).then(function () {
+      window.HarfAuth.signUp(email, password, name).then(function (result) {
+        if (result && result.session) {
+          // The project auto-confirms new signups, so Supabase already
+          // returned a real session — go straight into the app instead of
+          // telling the person to go check an email that was never sent.
+          signupForm.reset();
+          enterApp(result.session);
+          return;
+        }
         signupForm.reset();
         setAuthMode('signin');
         if (signinEmail) signinEmail.value = email;

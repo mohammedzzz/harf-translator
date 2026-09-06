@@ -115,19 +115,24 @@ body{
    Top bar
    ========================================================================== */
 
+/* display is gated on :not([hidden]) — see the .auth-screen/.shell comment
+   further down for why an unconditional `display` here would defeat the
+   `hidden` attribute JS uses to hide/show this element. */
 .topbar{
   position:sticky;
   top:0;
   z-index:100;
   height:56px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
   padding:0 20px;
   background:rgba(var(--sand-2-rgb),.82);
   backdrop-filter:blur(10px);
   -webkit-backdrop-filter:blur(10px);
   border-bottom:1px solid var(--line);
+}
+.topbar:not([hidden]){
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
 }
 
 .wordmark{
@@ -205,15 +210,23 @@ body{
    renderer.js's "App bootstrap / auth gate" section).
    ========================================================================== */
 
+/* display is gated on :not([hidden]), the same way .user-chip and
+   .modal-overlay already are below — an unconditional `display: flex` here
+   would win over the browser's default `[hidden] { display: none }` UA
+   rule (author styles beat UA styles regardless of the hidden attribute),
+   leaving this full-viewport overlay stuck on screen forever even after
+   renderer.js sets authScreen.hidden = true on a successful sign-in. */
 .auth-screen{
   position:fixed;
   inset:0;
   z-index:1000;
+  padding:24px;
+  background:var(--sand);
+}
+.auth-screen:not([hidden]){
   display:flex;
   align-items:center;
   justify-content:center;
-  padding:24px;
-  background:var(--sand);
 }
 
 .auth-card{
@@ -345,9 +358,14 @@ body{
    App shell: sidebar + content
    ========================================================================== */
 
+/* display is gated on :not([hidden]) — see the .auth-screen comment above
+   for why an unconditional `display` here would defeat the `hidden`
+   attribute renderer.js uses to hide/show this element. */
 .shell{
-  display:flex;
   height:calc(100vh - 56px);
+}
+.shell:not([hidden]){
+  display:flex;
 }
 
 .sidebar{
@@ -371,11 +389,12 @@ body{
   gap:4px;
 }
 
+/* display is gated on :not([hidden]) — #nav-admin-item starts `hidden` and
+   is only revealed for admins (see renderer.js); an unconditional `display`
+   here would defeat that, same bug class as .topbar/.auth-screen/.shell
+   above (author styles beat the UA's default `[hidden]{display:none}`). */
 .nav-item{
   width:100%;
-  display:flex;
-  align-items:center;
-  gap:12px;
   padding:8px 10px;
   border-radius:var(--r);
   border:none;
@@ -387,6 +406,11 @@ body{
   cursor:pointer;
   text-align:start;
   transition:background-color .15s ease, color .15s ease;
+}
+.nav-item:not([hidden]){
+  display:flex;
+  align-items:center;
+  gap:12px;
 }
 
 .nav-item:hover{
@@ -741,10 +765,15 @@ body{
    Projects
    ========================================================================== */
 
+/* display is gated on :not([hidden]) — #games-grid is toggled via the
+   hidden property in renderer.js when there are no published games; same
+   bug class as .topbar/.auth-screen/.shell above. */
 .project-grid{
-  display:grid;
   grid-template-columns:repeat(3, 1fr);
   gap:12px;
+}
+.project-grid:not([hidden]){
+  display:grid;
 }
 
 .project-card{
