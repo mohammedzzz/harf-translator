@@ -310,6 +310,7 @@
    * ------------------------------------------------------------------ */
 
   var AUTH_KEY = 'harf-auth-user';
+  var AUTH_EMAIL_KEY = 'harf-auth-email';
 
   function getAuthUser() {
     try {
@@ -319,12 +320,29 @@
     }
   }
 
-  function setAuthUser(name) {
+  function getAuthEmail() {
+    try {
+      return window.localStorage.getItem(AUTH_EMAIL_KEY);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // `email` is the actual string typed into the mock login form (kept
+  // alongside the derived display name so Settings → الملف الشخصي can show
+  // a real name + real email instead of fabricated ones — still no real
+  // verification of it happens anywhere, see SECURITY.md).
+  function setAuthUser(name, email) {
     try {
       if (name) {
         window.localStorage.setItem(AUTH_KEY, name);
       } else {
         window.localStorage.removeItem(AUTH_KEY);
+      }
+      if (email) {
+        window.localStorage.setItem(AUTH_EMAIL_KEY, email);
+      } else {
+        window.localStorage.removeItem(AUTH_EMAIL_KEY);
       }
     } catch (e) {
       // localStorage unavailable — the session just won't survive a restart.
@@ -357,6 +375,7 @@
       if (guestAuthBtn) guestAuthBtn.hidden = false;
       if (userChip) userChip.hidden = true;
     }
+    renderProfilePanel();
   }
 
   function openLoginModal(reason) {
@@ -391,7 +410,7 @@
 
   if (logoutBtn) {
     logoutBtn.addEventListener('click', function () {
-      setAuthUser(null);
+      setAuthUser(null, null);
       renderAuthUI();
     });
   }
@@ -432,12 +451,45 @@
       // Settings — this is the same single local "you" throughout the app.
       var emailVal = loginEmail ? loginEmail.value.trim() : '';
       var name = emailVal ? emailVal.split('@')[0] : 'سارة كمال';
-      setAuthUser(name);
+      setAuthUser(name, emailVal || null);
       renderAuthUI();
       closeLoginModal();
       var action = pendingAction;
       pendingAction = null;
       if (action) action();
+    });
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Settings → الملف الشخصي: gated behind the same mock login as comments
+   * and the join-team CTA. With no user logged in, the panel is hidden
+   * entirely and a small prompt is shown instead; once logged in, it shows
+   * the real typed-in name/email captured above (still self-reported, not
+   * verified — see SECURITY.md — but no longer fabricated placeholder data).
+   * ------------------------------------------------------------------ */
+
+  var profilePanel = document.getElementById('profile-panel');
+  var profileGate = document.getElementById('profile-gate');
+  var profileNameInput = document.getElementById('profile-name-input');
+  var profileEmailInput = document.getElementById('profile-email-input');
+  var profileLoginBtn = document.getElementById('profile-login-btn');
+
+  function renderProfilePanel() {
+    var name = getAuthUser();
+    if (name) {
+      if (profileGate) profileGate.hidden = true;
+      if (profilePanel) profilePanel.hidden = false;
+      if (profileNameInput) profileNameInput.value = name;
+      if (profileEmailInput) profileEmailInput.value = getAuthEmail() || '—';
+    } else {
+      if (profilePanel) profilePanel.hidden = true;
+      if (profileGate) profileGate.hidden = false;
+    }
+  }
+
+  if (profileLoginBtn) {
+    profileLoginBtn.addEventListener('click', function () {
+      openLoginModal('سجّل الدخول لعرض ملفك الشخصي.');
     });
   }
 
@@ -729,5 +781,403 @@
         settingsNote.hidden = true;
       }, 3000);
     });
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Admin: real Supabase Auth sign-in (see HarfAdmin in supabase.js),
+   * completely separate from the mock login above. Invisible/inert to
+   * regular users until someone deliberately opens "دخول المدير" in the
+   * sidebar footer and signs in with the founder's real Supabase account.
+   * On success this reveals the "لوحة الإدارة" nav item and the admin
+   * dashboard view; on load, a stored (and, if needed, silently
+   * refreshed) session restores that same state without a fresh login.
+   * ------------------------------------------------------------------ */
+
+  var navAdminItem = document.getElementById('nav-admin-item');
+  var sidebarAdminGuest = document.getElementById('sidebar-admin-guest');
+  var sidebarAdminActive = document.getElementById('sidebar-admin-active');
+  var adminEntryBtn = document.getElementById('admin-entry-btn');
+  var adminSignoutBtn = document.getElementById('admin-signout-btn');
+
+  var adminLoginOverlay = document.getElementById('admin-login-overlay');
+  var adminLoginForm = document.getElementById('admin-login-form');
+  var adminLoginEmail = document.getElementById('admin-login-email');
+  var adminLoginPassword = document.getElementById('admin-login-password');
+  var adminLoginError = document.getElementById('admin-login-error');
+  var adminLoginSubmit = document.getElementById('admin-login-submit');
+  var adminLoginCancelBtn = document.getElementById('admin-login-cancel');
+  var adminLoginCloseBtn = document.getElementById('admin-login-close');
+
+  function renderAdminAuthUI(signedIn) {
+    if (navAdminItem) navAdminItem.hidden = !signedIn;
+    if (sidebarAdminGuest) sidebarAdminGuest.hidden = signedIn;
+    if (sidebarAdminActive) sidebarAdminActive.hidden = !signedIn;
+    if (!signedIn && navAdminItem && navAdminItem.classList.contains('is-active')) {
+      // The admin view was open when the session ended — fall back to the
+      // regular dashboard rather than leaving an inert admin nav active.
+      showSection('dashboard');
+    }
+  }
+
+  function openAdminLoginModal() {
+    if (!adminLoginOverlay) return;
+    if (adminLoginError) adminLoginError.hidden = true;
+    adminLoginOverlay.hidden = false;
+    if (adminLoginEmail) adminLoginEmail.focus();
+  }
+
+  function closeAdminLoginModal() {
+    if (!adminLoginOverlay) return;
+    adminLoginOverlay.hidden = true;
+    if (adminLoginForm) adminLoginForm.reset();
+    if (adminLoginError) adminLoginError.hidden = true;
+  }
+
+  if (adminEntryBtn) {
+    adminEntryBtn.addEventListener('click', openAdminLoginModal);
+  }
+  if (adminLoginCancelBtn) adminLoginCancelBtn.addEventListener('click', closeAdminLoginModal);
+  if (adminLoginCloseBtn) adminLoginCloseBtn.addEventListener('click', closeAdminLoginModal);
+  if (adminLoginOverlay) {
+    adminLoginOverlay.addEventListener('click', function (e) {
+      if (e.target === adminLoginOverlay) closeAdminLoginModal();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !adminLoginOverlay.hidden) closeAdminLoginModal();
+    });
+  }
+
+  if (adminSignoutBtn) {
+    adminSignoutBtn.addEventListener('click', function () {
+      if (!window.HarfAdmin) return;
+      adminSignoutBtn.disabled = true;
+      window.HarfAdmin.signOut().finally(function () {
+        adminSignoutBtn.disabled = false;
+        renderAdminAuthUI(false);
+      });
+    });
+  }
+
+  if (adminLoginForm) {
+    adminLoginForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (!window.HarfAdmin) return;
+      if (adminLoginError) adminLoginError.hidden = true;
+      var email = adminLoginEmail ? adminLoginEmail.value.trim() : '';
+      var password = adminLoginPassword ? adminLoginPassword.value : '';
+      if (!email || !password) {
+        if (adminLoginError) {
+          adminLoginError.textContent = 'الرجاء إدخال البريد الإلكتروني وكلمة المرور.';
+          adminLoginError.hidden = false;
+        }
+        return;
+      }
+      if (adminLoginSubmit) {
+        adminLoginSubmit.disabled = true;
+        adminLoginSubmit.textContent = 'جارٍ الدخول...';
+      }
+      window.HarfAdmin.signIn(email, password).then(function () {
+        closeAdminLoginModal();
+        renderAdminAuthUI(true);
+        loadAdminData();
+        showSection('admin');
+      }).catch(function () {
+        if (adminLoginError) {
+          adminLoginError.textContent = 'بيانات الدخول غير صحيحة';
+          adminLoginError.hidden = false;
+        }
+      }).finally(function () {
+        if (adminLoginSubmit) {
+          adminLoginSubmit.disabled = false;
+          adminLoginSubmit.textContent = 'دخول';
+        }
+      });
+    });
+  }
+
+  // Restore an existing admin session on launch, refreshing it first if
+  // the access token has expired — no fresh login needed unless the
+  // refresh token itself is gone or invalid.
+  if (window.HarfAdmin && window.HarfAdmin.hasSession()) {
+    window.HarfAdmin.ensureValidSession().then(function () {
+      renderAdminAuthUI(true);
+      loadAdminData();
+    }).catch(function () {
+      renderAdminAuthUI(false);
+    });
+  } else {
+    renderAdminAuthUI(false);
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Admin dashboard: three sub-tabs (طلبات الترجمة / التعليقات /
+   * طلبات الانضمام), each backed by an authenticated PostgREST call using
+   * the admin's access token (see HarfAdmin's list/updateStatus/deleteRow
+   * in supabase.js) instead of the anon key. join_applications is never
+   * read anywhere else in this app — this is the one and only place its
+   * rows are ever displayed.
+   * ------------------------------------------------------------------ */
+
+  var adminTabs = document.querySelectorAll('.admin-tab');
+  var adminPanels = {
+    requests: document.getElementById('admin-panel-requests'),
+    comments: document.getElementById('admin-panel-comments'),
+    applications: document.getElementById('admin-panel-applications')
+  };
+  var adminRowsEl = {
+    requests: document.getElementById('admin-requests-rows'),
+    comments: document.getElementById('admin-comments-rows'),
+    applications: document.getElementById('admin-applications-rows')
+  };
+  var adminErrorEl = document.getElementById('admin-error');
+
+  adminTabs.forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      var target = tab.dataset.adminTab;
+      adminTabs.forEach(function (t) {
+        t.classList.toggle('is-active', t === tab);
+      });
+      Object.keys(adminPanels).forEach(function (key) {
+        if (adminPanels[key]) adminPanels[key].classList.toggle('is-active', key === target);
+      });
+    });
+  });
+
+  function setAdminError(message) {
+    if (!adminErrorEl) return;
+    if (message) {
+      adminErrorEl.textContent = message;
+      adminErrorEl.hidden = false;
+    } else {
+      adminErrorEl.hidden = true;
+    }
+  }
+
+  function adminEmptyRow(container, text) {
+    container.innerHTML = '';
+    var empty = document.createElement('div');
+    empty.className = 'admin-empty';
+    empty.textContent = text;
+    container.appendChild(empty);
+  }
+
+  // Builds a <select class="admin-status-select"> pre-selected to
+  // `current`, calling onChange(newStatus, revert) whenever it changes.
+  // `revert` restores the previous value if the caller's update fails.
+  function buildStatusSelect(current, options, onChange) {
+    var select = document.createElement('select');
+    select.className = 'admin-status-select';
+    var values = options.slice();
+    if (current && values.indexOf(current) === -1) values.unshift(current);
+    values.forEach(function (value) {
+      var opt = document.createElement('option');
+      opt.value = value;
+      opt.textContent = value;
+      if (value === current) opt.selected = true;
+      select.appendChild(opt);
+    });
+    select.addEventListener('change', function () {
+      var previous = current;
+      var next = select.value;
+      select.disabled = true;
+      onChange(next, function revert() {
+        select.value = previous;
+      });
+      select.disabled = false;
+    });
+    return select;
+  }
+
+  function buildDeleteButton(onConfirm) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'admin-delete-btn';
+    btn.textContent = 'حذف';
+    btn.addEventListener('click', function () {
+      btn.disabled = true;
+      onConfirm(function () {
+        btn.disabled = false;
+      });
+    });
+    return btn;
+  }
+
+  function truncatedCell(text) {
+    var span = document.createElement('span');
+    span.className = 'admin-cell-truncate';
+    span.textContent = text || '—';
+    if (text) span.title = text;
+    return span;
+  }
+
+  var REQUEST_STATUS_OPTIONS = ['قيد الدراسة', 'مقبول', 'مرفوض', 'مكتمل'];
+  var APPLICATION_STATUS_OPTIONS = ['جديد', 'تم التواصل', 'مقبول', 'مرفوض'];
+
+  function buildAdminRequestRow(row) {
+    var el = document.createElement('div');
+    el.className = 'admin-row admin-row-requests';
+
+    el.appendChild(truncatedCell(row.game_name));
+    el.appendChild(truncatedCell(row.engine));
+    el.appendChild(truncatedCell(row.game_link));
+    el.appendChild(truncatedCell(row.notes));
+
+    var statusCell = document.createElement('span');
+    statusCell.appendChild(buildStatusSelect(row.status, REQUEST_STATUS_OPTIONS, function (next, revert) {
+      window.HarfAdmin.updateStatus('translation_requests', row.id, next).then(function () {
+        row.status = next;
+      }).catch(function () {
+        revert();
+        setAdminError('تعذّر تحديث حالة الطلب، حاول مرة أخرى.');
+      });
+    }));
+    el.appendChild(statusCell);
+
+    var dateSpan = document.createElement('span');
+    dateSpan.className = 'mono';
+    dateSpan.textContent = formatDateOnly(row.created_at);
+    el.appendChild(dateSpan);
+
+    var actionsCell = document.createElement('span');
+    actionsCell.appendChild(buildDeleteButton(function (done) {
+      window.HarfAdmin.deleteRow('translation_requests', row.id).then(function () {
+        el.remove();
+        if (!adminRowsEl.requests.children.length) {
+          adminEmptyRow(adminRowsEl.requests, 'لا توجد طلبات ترجمة بعد');
+        }
+      }).catch(function () {
+        done();
+        setAdminError('تعذّر حذف الطلب، حاول مرة أخرى.');
+      });
+    }));
+    el.appendChild(actionsCell);
+
+    return el;
+  }
+
+  function buildAdminCommentRow(row) {
+    var el = document.createElement('div');
+    el.className = 'admin-row admin-row-comments';
+
+    el.appendChild(truncatedCell(row.author_name));
+    el.appendChild(truncatedCell(row.body));
+
+    var dateSpan = document.createElement('span');
+    dateSpan.className = 'mono';
+    dateSpan.textContent = formatDateOnly(row.created_at);
+    el.appendChild(dateSpan);
+
+    var actionsCell = document.createElement('span');
+    actionsCell.appendChild(buildDeleteButton(function (done) {
+      window.HarfAdmin.deleteRow('comments', row.id).then(function () {
+        el.remove();
+        if (!adminRowsEl.comments.children.length) {
+          adminEmptyRow(adminRowsEl.comments, 'لا توجد تعليقات بعد');
+        }
+      }).catch(function () {
+        done();
+        setAdminError('تعذّر حذف التعليق، حاول مرة أخرى.');
+      });
+    }));
+    el.appendChild(actionsCell);
+
+    return el;
+  }
+
+  function buildAdminApplicationRow(row) {
+    var el = document.createElement('div');
+    el.className = 'admin-row admin-row-applications';
+
+    el.appendChild(truncatedCell(row.name));
+    el.appendChild(truncatedCell(row.email));
+    el.appendChild(truncatedCell(row.message));
+
+    var statusCell = document.createElement('span');
+    statusCell.appendChild(buildStatusSelect(row.status, APPLICATION_STATUS_OPTIONS, function (next, revert) {
+      window.HarfAdmin.updateStatus('join_applications', row.id, next).then(function () {
+        row.status = next;
+      }).catch(function () {
+        revert();
+        setAdminError('تعذّر تحديث حالة طلب الانضمام، حاول مرة أخرى.');
+      });
+    }));
+    el.appendChild(statusCell);
+
+    var dateSpan = document.createElement('span');
+    dateSpan.className = 'mono';
+    dateSpan.textContent = formatDateOnly(row.created_at);
+    el.appendChild(dateSpan);
+
+    var actionsCell = document.createElement('span');
+    actionsCell.appendChild(buildDeleteButton(function (done) {
+      window.HarfAdmin.deleteRow('join_applications', row.id).then(function () {
+        el.remove();
+        if (!adminRowsEl.applications.children.length) {
+          adminEmptyRow(adminRowsEl.applications, 'لا توجد طلبات انضمام بعد');
+        }
+      }).catch(function () {
+        done();
+        setAdminError('تعذّر حذف طلب الانضمام، حاول مرة أخرى.');
+      });
+    }));
+    el.appendChild(actionsCell);
+
+    return el;
+  }
+
+  function loadAdminRequests() {
+    if (!adminRowsEl.requests) return;
+    window.HarfAdmin.listTranslationRequests().then(function (rows) {
+      adminRowsEl.requests.innerHTML = '';
+      if (!rows || !rows.length) {
+        adminEmptyRow(adminRowsEl.requests, 'لا توجد طلبات ترجمة بعد');
+        return;
+      }
+      rows.forEach(function (row) {
+        adminRowsEl.requests.appendChild(buildAdminRequestRow(row));
+      });
+    }).catch(function () {
+      setAdminError('تعذّر تحميل طلبات الترجمة، تحقق من الاتصال وحاول مرة أخرى.');
+    });
+  }
+
+  function loadAdminComments() {
+    if (!adminRowsEl.comments) return;
+    window.HarfAdmin.listComments().then(function (rows) {
+      adminRowsEl.comments.innerHTML = '';
+      if (!rows || !rows.length) {
+        adminEmptyRow(adminRowsEl.comments, 'لا توجد تعليقات بعد');
+        return;
+      }
+      rows.forEach(function (row) {
+        adminRowsEl.comments.appendChild(buildAdminCommentRow(row));
+      });
+    }).catch(function () {
+      setAdminError('تعذّر تحميل التعليقات، تحقق من الاتصال وحاول مرة أخرى.');
+    });
+  }
+
+  function loadAdminApplications() {
+    if (!adminRowsEl.applications) return;
+    window.HarfAdmin.listJoinApplications().then(function (rows) {
+      adminRowsEl.applications.innerHTML = '';
+      if (!rows || !rows.length) {
+        adminEmptyRow(adminRowsEl.applications, 'لا توجد طلبات انضمام بعد');
+        return;
+      }
+      rows.forEach(function (row) {
+        adminRowsEl.applications.appendChild(buildAdminApplicationRow(row));
+      });
+    }).catch(function () {
+      setAdminError('تعذّر تحميل طلبات الانضمام، تحقق من الاتصال وحاول مرة أخرى.');
+    });
+  }
+
+  function loadAdminData() {
+    if (!window.HarfAdmin) return;
+    setAdminError(null);
+    loadAdminRequests();
+    loadAdminComments();
+    loadAdminApplications();
   }
 })();

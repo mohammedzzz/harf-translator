@@ -14,7 +14,7 @@ function createWindow() {
     minWidth: 1040,
     minHeight: 680,
     backgroundColor: '#EDE0CB', // matches --sand, avoids a white flash while loading
-    title: 'حرف — أداة الترجمة',
+    title: 'HARF - لترجمة الألعاب',
     icon: path.join(__dirname, 'build', 'icon.ico'),
     autoHideMenuBar: true,
     webPreferences: {

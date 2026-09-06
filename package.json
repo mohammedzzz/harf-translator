@@ -1,7 +1,8 @@
 {
   "name": "harf-translator",
-  "version": "0.2.0",
-  "description": "Harf Translator — internal desktop tool for the Harf volunteer Arabic game translation team.",
+  "productName": "HARF - لترجمة الألعاب",
+  "version": "0.3.0",
+  "description": "HARF - لترجمة الألعاب — internal desktop tool for the Harf volunteer Arabic game translation team.",
   "main": "main.js",
   "author": "Harf Team",
   "license": "UNLICENSED",
@@ -20,7 +21,7 @@
   },
   "build": {
     "appId": "team.harf.translator",
-    "productName": "Harf Translator",
+    "productName": "HARF - لترجمة الألعاب",
     "copyright": "Copyright © Harf Team",
     "files": [
       "main.js",
@@ -48,7 +49,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "حرف — أداة الترجمة",
+      "shortcutName": "HARF - لترجمة الألعاب",
       "artifactName": "Harf-Translator-Setup-${version}.${ext}"
     }
   }

@@ -136,7 +136,7 @@ body{
   gap:10px;
 }
 
-.wordmark-ar{
+.wordmark-brand{
   font-family:var(--f-display);
   font-weight:700;
   font-size:22px;
@@ -144,7 +144,7 @@ body{
   letter-spacing:.5px;
 }
 
-.wordmark-ar .dot{
+.wordmark-brand .dot{
   color:var(--clay);
 }
 
@@ -351,6 +351,37 @@ body{
   color:var(--ink-soft);
   font-weight:400;
   font-size:11.5px;
+}
+
+/* Admin entry point: an unobtrusive text link, not a prominent button —
+   invisible-in-spirit until someone deliberately looks for it. */
+.sidebar-admin{
+  margin-top:8px;
+  padding-top:8px;
+  border-top:1px dashed var(--line);
+}
+.admin-entry-link{
+  appearance:none;
+  border:none;
+  background:none;
+  padding:0;
+  color:var(--ink-soft);
+  font-size:11px;
+  font-weight:400;
+  cursor:pointer;
+  text-decoration:underline;
+  text-decoration-color:transparent;
+  transition:color .15s ease, text-decoration-color .15s ease;
+}
+.admin-entry-link:hover{
+  color:var(--clay);
+  text-decoration-color:currentColor;
+}
+.sidebar-admin-status{
+  margin:0 0 3px;
+  font-size:11px;
+  color:var(--clay);
+  font-weight:700;
 }
 
 .content{
@@ -761,6 +792,9 @@ body{
   font-size:13px;
   max-width:none;
 }
+.empty-state-mini .btn-small{
+  margin-top:8px;
+}
 
 .project-meta{
   display:flex;
@@ -844,6 +878,12 @@ body{
   box-shadow:0 0 0 3px rgba(var(--red-rgb),.15);
 }
 
+.field input[readonly]{
+  background:rgba(var(--ink-rgb),.04);
+  color:var(--ink-soft);
+  cursor:default;
+}
+
 .form-actions{
   display:flex;
   align-items:center;
@@ -906,6 +946,121 @@ body{
 .pill-mid{ background:rgba(var(--ochre-rgb),.18); color:var(--clay-deep); }
 .pill-bad{ background:rgba(var(--red-rgb),.14); color:var(--red); }
 .pill-neutral{ background:rgba(var(--ink-rgb),.08); color:var(--ink-soft); }
+
+/* ==========================================================================
+   Admin dashboard (real Supabase Auth session only)
+   ========================================================================== */
+
+.admin-tabs{
+  display:flex;
+  gap:6px;
+  margin-bottom:14px;
+  border-bottom:1px solid var(--line);
+}
+.admin-tab{
+  appearance:none;
+  border:none;
+  background:none;
+  padding:9px 4px;
+  margin-bottom:-1px;
+  border-bottom:2px solid transparent;
+  color:var(--ink-soft);
+  font-family:var(--f-body);
+  font-size:13.5px;
+  font-weight:500;
+  cursor:pointer;
+}
+.admin-tab + .admin-tab{ margin-inline-start:14px; }
+.admin-tab:hover{ color:var(--ink); }
+.admin-tab.is-active{
+  color:var(--clay);
+  font-weight:700;
+  border-bottom-color:var(--clay);
+}
+
+.admin-panel{ display:none; }
+.admin-panel.is-active{ display:block; }
+
+.admin-table{
+  background:var(--sand-2);
+  border:1px solid var(--line);
+  border-radius:var(--r);
+  overflow:hidden;
+  overflow-x:auto;
+}
+
+.admin-row{
+  display:grid;
+  gap:10px;
+  align-items:center;
+  padding:10px 14px;
+  font-size:12.5px;
+  border-bottom:1px solid var(--line);
+}
+.admin-row:last-child{ border-bottom:none; }
+
+.admin-row-head{
+  background:rgba(var(--ink-rgb),.04);
+  color:var(--ink-soft);
+  font-weight:700;
+  font-size:11px;
+  white-space:nowrap;
+}
+
+.admin-row-requests{ grid-template-columns:1.2fr .8fr 1fr 1.4fr .95fr .8fr .7fr; }
+.admin-row-comments{ grid-template-columns:.9fr 2fr .8fr .6fr; }
+.admin-row-applications{ grid-template-columns:.9fr 1.1fr 1.6fr .95fr .8fr .7fr; }
+
+.admin-cell-truncate{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  max-width:100%;
+}
+
+.admin-empty{
+  padding:26px 14px;
+  text-align:center;
+  color:var(--ink-soft);
+  font-size:13.5px;
+}
+
+.admin-status-select{
+  font-family:var(--f-body);
+  font-size:12px;
+  color:var(--ink);
+  background:var(--sand);
+  border:1px solid var(--line);
+  border-radius:99px;
+  padding:4px 8px;
+  cursor:pointer;
+}
+.admin-status-select:focus{
+  outline:none;
+  border-color:var(--clay);
+  box-shadow:0 0 0 3px rgba(var(--clay-rgb),.15);
+}
+
+.admin-delete-btn{
+  appearance:none;
+  border:1px solid rgba(var(--red-rgb),.4);
+  background:transparent;
+  color:var(--red);
+  border-radius:99px;
+  padding:4px 10px;
+  font-family:var(--f-body);
+  font-size:11.5px;
+  font-weight:700;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.admin-delete-btn:hover{
+  background:rgba(var(--red-rgb),.12);
+}
+.admin-delete-btn:disabled{
+  opacity:.5;
+  cursor:default;
+}
 
 /* ==========================================================================
    Translated games (download list)

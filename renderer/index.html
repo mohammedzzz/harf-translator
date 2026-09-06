@@ -9,7 +9,7 @@
      after the Google Fonts / styles.css links would tie the dark-theme
      flag to a network fetch and defeat the point of applying it pre-paint. -->
 <script src="theme-init.js"></script>
-<title>حرف — أداة الترجمة</title>
+<title>HARF - لترجمة الألعاب</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@300;400;500;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -20,11 +20,11 @@
 
 <header class="topbar">
   <div class="wordmark">
-    <span class="wordmark-ar">حرف<span class="dot">.</span></span>
-    <span class="wordmark-sub">أداة الترجمة</span>
+    <span class="wordmark-brand">HARF<span class="dot">.</span></span>
+    <span class="wordmark-sub">لترجمة الألعاب</span>
   </div>
   <div class="topbar-end">
-    <span class="build-pill">الإصدار 0.2 · تجريبي</span>
+    <span class="build-pill">الإصدار 0.3</span>
     <button class="btn btn-ghost btn-small" type="button" id="guest-auth-btn">تسجيل الدخول</button>
     <div class="user-chip" id="user-chip" hidden>
       <span class="user-chip-avatar" id="user-chip-avatar">س</span>
@@ -58,6 +58,34 @@
         <button type="submit" class="btn btn-primary">تسجيل الدخول</button>
       </div>
       <p class="modal-hint">نموذج تجريبي فقط — لا يوجد تحقق فعلي، أي بريد وكلمة مرور يعملان.</p>
+    </form>
+  </div>
+</div>
+
+<!-- ===================== ADMIN LOGIN MODAL (real Supabase Auth — separate from the mock login above) ===================== -->
+<div class="modal-overlay" id="admin-login-overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="admin-login-title">
+    <div class="modal-head">
+      <h2 id="admin-login-title">دخول المدير</h2>
+      <button class="modal-close" type="button" id="admin-login-close" aria-label="إغلاق">×</button>
+    </div>
+    <p class="modal-lede">تسجيل دخول حقيقي عبر حساب Supabase الخاص بمالك الفريق — غير متاح لبقية أعضاء الفريق أو الزوار.</p>
+    <form id="admin-login-form" novalidate>
+      <div class="form-grid">
+        <label class="field field-wide">
+          <span>البريد الإلكتروني</span>
+          <input type="email" id="admin-login-email" required placeholder="you@example.com" autocomplete="off" maxlength="254" />
+        </label>
+        <label class="field field-wide">
+          <span>كلمة المرور</span>
+          <input type="password" id="admin-login-password" required placeholder="••••••••" autocomplete="off" />
+        </label>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-ghost" id="admin-login-cancel">إلغاء</button>
+        <button type="submit" class="btn btn-primary" id="admin-login-submit">دخول</button>
+      </div>
+      <p class="form-note form-error" id="admin-login-error" hidden></p>
     </form>
   </div>
 </div>
@@ -97,6 +125,14 @@
 <div class="shell">
   <nav class="sidebar" aria-label="التنقل الرئيسي">
     <ul class="nav-list">
+      <li>
+        <button class="nav-item nav-item-admin" data-target="admin" type="button" id="nav-admin-item" hidden>
+          <span class="nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 4.5 7v5.2c0 4.7 3.2 7.9 7.5 9.3 4.3-1.4 7.5-4.6 7.5-9.3V7L12 3.5Z"/><path d="m9 12 2 2 4-4"/></svg>
+          </span>
+          <span class="nav-label">لوحة الإدارة</span>
+        </button>
+      </li>
       <li>
         <button class="nav-item is-active" data-target="dashboard" type="button">
           <span class="nav-icon" aria-hidden="true">
@@ -142,10 +178,64 @@
     <div class="sidebar-foot">
       <p>فريق حرف التطوعي</p>
       <p class="muted">ترجمة الألعاب بلمسة إنسانية</p>
+      <div class="sidebar-admin" id="sidebar-admin-guest">
+        <button class="admin-entry-link" type="button" id="admin-entry-btn">دخول المدير</button>
+      </div>
+      <div class="sidebar-admin" id="sidebar-admin-active" hidden>
+        <p class="sidebar-admin-status">مسجّل كمدير</p>
+        <button class="admin-entry-link" type="button" id="admin-signout-btn">تسجيل الخروج</button>
+      </div>
     </div>
   </nav>
 
   <main class="content">
+
+    <!-- ===================== ADMIN DASHBOARD (real Supabase Auth session only) ===================== -->
+    <section class="view" id="view-admin">
+      <div class="section-head">
+        <p class="eyebrow">وصول مقيّد</p>
+        <h1>لوحة الإدارة</h1>
+        <p class="lede">إدارة طلبات الترجمة والتعليقات وطلبات الانضمام. مرئية فقط بعد الدخول بحساب المدير الحقيقي عبر Supabase.</p>
+      </div>
+
+      <div class="admin-tabs" role="tablist">
+        <button class="admin-tab is-active" data-admin-tab="requests" type="button">طلبات الترجمة</button>
+        <button class="admin-tab" data-admin-tab="comments" type="button">التعليقات</button>
+        <button class="admin-tab" data-admin-tab="applications" type="button">طلبات الانضمام</button>
+      </div>
+
+      <p class="form-note form-error" id="admin-error" hidden></p>
+
+      <!-- طلبات الترجمة -->
+      <div class="admin-panel is-active" id="admin-panel-requests">
+        <div class="admin-table">
+          <div class="admin-row admin-row-requests admin-row-head">
+            <span>اللعبة</span><span>المحرك</span><span>الرابط</span><span>ملاحظات</span><span>الحالة</span><span>التاريخ</span><span></span>
+          </div>
+          <div id="admin-requests-rows"></div>
+        </div>
+      </div>
+
+      <!-- التعليقات -->
+      <div class="admin-panel" id="admin-panel-comments">
+        <div class="admin-table">
+          <div class="admin-row admin-row-comments admin-row-head">
+            <span>الكاتب</span><span>التعليق</span><span>التاريخ</span><span></span>
+          </div>
+          <div id="admin-comments-rows"></div>
+        </div>
+      </div>
+
+      <!-- طلبات الانضمام: القراءة هنا فقط، لا يوجد أي مسار عام لعرض هذا الجدول -->
+      <div class="admin-panel" id="admin-panel-applications">
+        <div class="admin-table">
+          <div class="admin-row admin-row-applications admin-row-head">
+            <span>الاسم</span><span>البريد الإلكتروني</span><span>الرسالة</span><span>الحالة</span><span>التاريخ</span><span></span>
+          </div>
+          <div id="admin-applications-rows"></div>
+        </div>
+      </div>
+    </section>
 
     <!-- ===================== DASHBOARD ===================== -->
     <section class="view is-active" id="view-dashboard">
@@ -315,21 +405,29 @@
 
       <form class="settings-form" id="settings-form">
 
-        <div class="panel">
+        <div class="panel" id="profile-panel" hidden>
           <div class="panel-head"><h2>الملف الشخصي</h2></div>
           <div class="form-grid">
-            <label class="field">
-              <span>الاسم الكامل</span>
-              <input type="text" value="سارة كمال" />
-            </label>
-            <label class="field">
-              <span>الاسم المستعار</span>
-              <input type="text" value="sarah.k" />
+            <label class="field field-wide">
+              <span>الاسم</span>
+              <input type="text" id="profile-name-input" readonly />
             </label>
             <label class="field field-wide">
               <span>البريد الإلكتروني</span>
-              <input type="email" value="sarah.k@harf.team" />
+              <input type="email" id="profile-email-input" readonly />
             </label>
+          </div>
+        </div>
+
+        <div class="panel" id="profile-gate">
+          <div class="empty-state empty-state-mini">
+            <div class="empty-state-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c1.2-3.6 4-5.4 7-5.4s5.8 1.8 7 5.4"/></svg>
+            </div>
+            <div>
+              <p>سجّل الدخول لعرض ملفك الشخصي.</p>
+              <button class="btn btn-primary btn-small" type="button" id="profile-login-btn">تسجيل الدخول</button>
+            </div>
           </div>
         </div>
 
