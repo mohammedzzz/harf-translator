@@ -1,7 +1,7 @@
 {
   "name": "harf-translator",
   "productName": "HARF - لترجمة الألعاب",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "HARF - لترجمة الألعاب — internal desktop tool for the Harf volunteer Arabic game translation team.",
   "main": "main.js",
   "author": "Harf Team",

@@ -2,7 +2,7 @@
 // UI-only foundation phase: no backend, no file I/O, no IPC logic yet.
 // This file just boots a standard Electron shell that loads the renderer.
 
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, shell } = require('electron');
 const path = require('path');
 
 let mainWindow = null;
@@ -29,13 +29,27 @@ function createWindow() {
 
   // Hardening: this window only ever needs to show its own bundled
   // renderer/index.html. There is no legitimate reason for it to navigate
-  // anywhere else or to pop a second window/tab, so block both outright —
-  // this is a real app running on machines we don't control now, so we
-  // don't rely on there simply being no links in the UI today.
+  // anywhere else in-process, so block that outright — this is a real app
+  // running on machines we don't control now, so we don't rely on there
+  // simply being no links in the UI today.
   mainWindow.webContents.on('will-navigate', (event) => {
     event.preventDefault();
   });
-  mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  // Every window.open()/target="_blank"/middle-click request is denied as
+  // far as Electron opening a second in-process window goes — that part is
+  // unconditional. The one narrow exception: a genuine http(s) URL (the
+  // renderer only ever produces these for admin-entered download/delivery
+  // links on translated_games/translation_requests, always rendered with
+  // target="_blank" — see renderer/renderer.js's isSafeExternalUrl()) is
+  // handed to the OS's default browser via shell.openExternal instead of
+  // being silently dropped, so those links are actually usable. Any other
+  // scheme (or no URL) is just denied, same as before.
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url)) {
+      shell.openExternal(url);
+    }
+    return { action: 'deny' };
+  });
 
   mainWindow.on('closed', () => {
     mainWindow = null;

@@ -7,39 +7,37 @@ into Arabic by hand. This shares the public Harf website's visual identity
 ## Status
 
 A working Electron window with sidebar navigation between the regular
-sections (Dashboard, Projects, Translation Requests, Translated Games,
+sections (الرئيسية, Projects, Translation Requests, Translated Games,
 Settings) plus a hidden admin dashboard (see below). Comments, translation
-requests, and join-the-team applications are **real data**, read from and
-written to a live Supabase (Postgres) project over its REST API (see
-`renderer/supabase.js` and `SECURITY.md`). Projects and Translated Games
-are still placeholders, shown as "قريبًا" (coming soon) empty states.
-There is still no file I/O and no real translation logic — a couple of
-small in-page interactions (a fake "preparing download" note on the
-Translated Games cards, a light/dark theme toggle persisted to
-`localStorage`, a fake "settings saved" note) are implemented client-side
-in `renderer/renderer.js` for demonstration purposes only.
+requests, join-the-team applications, and translated games are **real
+data**, read from and written to a live Supabase (Postgres) project over
+its REST API (see `renderer/supabase.js` and `SECURITY.md`). Projects is
+still a placeholder, shown as a "قريبًا" (coming soon) empty state. There
+is still no file I/O and no real translation logic — a light/dark theme
+toggle persisted to `localStorage` and a fake "settings saved" note are
+implemented client-side in `renderer/renderer.js` for demonstration
+purposes only.
 
-This app now has **two separate, unrelated login flows** — do not confuse
-them:
+Translation Requests is split into two request types: طلب عام (مجاني) — a
+public wishlist for newly-released games, free, visible to every signed-in
+user — and طلب خاص (مدفوع) — a $10/game paid request for old games or old
+parts/chapters, visible only to its own submitter (and the admin). The
+admin dashboard's requests tab lets the admin mark a خاص request `paid`
+and set a `delivery_url` once the translation is ready; the requester then
+sees a "تحميل ترجمتك" button. Translated Games shows real published
+`translated_games` rows with a working download link; the admin dashboard
+has a matching tab to add a game as a draft and publish/unpublish it.
 
-- **Public login** (the "تسجيل الدخول" button in the top bar): still a
-  UI-only mock, exactly as before. It gates two actions (posting a
-  Dashboard comment, and the "قدم طلبك" join-the-team CTA) behind a fake
-  `localStorage`-backed sign-in — any email/password works, there is no
-  real account system, and it protects nothing. The translation-request
-  form is deliberately **not** gated; anyone can submit one, though it
-  blocks submission with an inline error until the required fields are
-  actually filled in. Settings → الملف الشخصي now reflects this mock
-  login's real typed-in name/email instead of showing fabricated data,
-  and is hidden behind a "سجّل الدخول لعرض ملفك الشخصي" prompt when no one
-  is logged in.
-- **Admin login** ("دخول المدير", a small muted link in the sidebar
-  footer): real Supabase Auth, for exactly one founder account. Signing in
-  there reveals "لوحة الإدارة", a separate dashboard for managing every
-  translation request, comment, and join application (status updates and
-  deletes), backed by RLS policies scoped to that one authenticated user.
-  See "Admin authentication" in `SECURITY.md` for exactly how this works
-  and why it cannot widen access for anyone else.
+There is **exactly one login flow** in this app: real Supabase Auth
+(email + password, with required email confirmation), gating the entire
+app behind an `#auth-screen` sign-in/sign-up toggle — no session, no
+topbar, no sidebar, no content. The founder's admin account signs in
+through this exact same form; a client-side UID check afterward reveals
+"لوحة الإدارة", a separate dashboard for managing every translation
+request, comment, join application, and translated game — the real
+access boundary (seeing/mutating rows others can't) is enforced entirely
+server-side by RLS policies keyed off that UID. See "Authentication" in
+`SECURITY.md` for exactly how this works.
 
 The app is now packaged for distribution (see `build/`, and the `build`
 config + `dist` script in `package.json`); see `SECURITY.md` for what's
@@ -69,24 +67,29 @@ npm start
 - `renderer/theme-init.js` — tiny synchronous script loaded first in
   `<head>`; applies a persisted dark-theme choice before first paint so
   there's no light-then-dark flash on launch.
-- `renderer/renderer.js` — client-side view switching, the small
-  interactions mentioned above, the light/dark theme toggle wiring, both
-  login flows (mock public login and real admin login), and the admin
-  dashboard's rendering/wiring. No network or filesystem access of its
-  own — all requests go through `renderer/supabase.js`.
+- `renderer/supabase.js` — `HarfAuth` (Supabase Auth session management,
+  the `isAdmin()` founder-UID check) and `HarfSupabase` (authenticated
+  PostgREST calls for every table, generic enough to work against any of
+  them — comments, translation_requests, join_applications,
+  translated_games).
+- `renderer/renderer.js` — client-side view switching, the theme toggle
+  wiring, the single real Supabase Auth flow (sign-in/sign-up/session
+  restore), the split طلب عام / طلب خاص request panels, the public
+  Translated Games list, and the admin dashboard's rendering/wiring. No
+  network or filesystem access of its own — all requests go through
+  `renderer/supabase.js`.
 
 ## Next steps (not yet implemented)
 
-- Real project tracking and Translated Games delivery (currently "قريبًا"
-  empty states) — see `renderer/supabase.js` for the tables already wired
-  up for requests/comments/join-applications.
-- Persist settings (notifications) — only the theme choice and, as of the
-  admin/profile work, the mock login's name/email are persisted today.
-- Real download delivery for Translated Games (currently a fake
-  "preparing download" confirmation with no file behind it).
-- Extend real Supabase Auth (currently one founder account only, see
-  "Admin authentication" in `SECURITY.md`) to more team members if
-  per-user accountability beyond the founder is ever needed. The public
-  login stays intentionally mock — see "Author names are self-reported,
-  not verified" in `SECURITY.md`.
+- Real project tracking (Projects is still a "قريبًا" empty state).
+- Real payment collection for طلب خاص requests — the request form shows an
+  explicit placeholder callout ("معلومات الدفع ستُضاف قريباً من قبل
+  الفريق") where real payment instructions will go once ready; today the
+  admin just marks a request `paid` by hand after receiving payment
+  out-of-band.
+- Persist settings (notifications) — only the theme choice is persisted
+  today.
+- Extend real Supabase Auth (currently one founder/admin UID, see
+  "Authentication" in `SECURITY.md`) with finer-grained roles if
+  per-user accountability beyond a single admin is ever needed.
 - Translation editor and file/import tooling via `preload.js` + IPC.

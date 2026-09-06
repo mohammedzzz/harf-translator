@@ -1,9 +1,11 @@
 // Harf Translator — renderer process
-// Client-side view switching plus small cosmetic interactions, and now real
-// data: comments, translation requests, and join-the-team applications are
-// read from and written to Supabase (see supabase.js) instead of being
-// hardcoded mock content. Still no file I/O and no real translation logic.
-// Auth stays a UI-only mock — see the Auth section below and SECURITY.md.
+// Client-side view switching plus small cosmetic interactions, real data
+// (comments, translation requests — split into طلب عام / طلب خاص —
+// join-the-team applications, and translated games) read from and written
+// to Supabase (see supabase.js), and one real, mandatory Supabase Auth
+// sign-in gating the entire app — see the "Auth" section near the bottom
+// of this file and SECURITY.md. Still no file I/O and no real translation
+// logic.
 
 (function () {
   'use strict';
@@ -54,48 +56,10 @@
    * Supabase, and render the real request list fetched from there too.
    * ------------------------------------------------------------------ */
 
-  var toggleBtn = document.getElementById('toggle-request-form');
-  var requestForm = document.getElementById('request-form');
-  var cancelBtn = document.getElementById('cancel-request-form');
-  var formNote = document.getElementById('form-note');
-  var formError = document.getElementById('form-error');
-  var reqGameNameInput = document.getElementById('req-game-name');
-  var reqEngineInput = document.getElementById('req-engine');
-  var reqGameLinkInput = document.getElementById('req-game-link');
-  var reqNotesInput = document.getElementById('req-notes');
-  var reqRowsEl = document.getElementById('req-rows');
-  var reqListError = document.getElementById('req-list-error');
-
-  function resetRequestFormFeedback() {
-    formNote.hidden = true;
-    formError.hidden = true;
-    requestForm.querySelectorAll('.field.is-invalid').forEach(function (field) {
-      field.classList.remove('is-invalid');
-    });
-  }
-
-  if (toggleBtn && requestForm) {
-    toggleBtn.addEventListener('click', function () {
-      requestForm.hidden = !requestForm.hidden;
-      if (!requestForm.hidden) {
-        resetRequestFormFeedback();
-        requestForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }
-    });
-  }
-
-  if (cancelBtn && requestForm) {
-    cancelBtn.addEventListener('click', function () {
-      requestForm.hidden = true;
-      requestForm.reset();
-      resetRequestFormFeedback();
-    });
-  }
-
   // Status text (as stored in the `status` column) mapped to a pill color.
   // New requests always arrive as 'قيد الدراسة' (the column default) —
-  // the other values only ever appear once the team updates a row from
-  // the Supabase dashboard, which this app has no UI for yet.
+  // the other values only ever appear once the team updates a row from the
+  // admin dashboard.
   function statusPillClass(status) {
     if (status === 'مقبول') return 'pill-good';
     if (status === 'مرفوض') return 'pill-bad';
@@ -109,10 +73,13 @@
     return d.toISOString().slice(0, 10);
   }
 
-  // Builds one .req-row from a translation_requests table row. Every value
-  // here can be arbitrary text typed by an anonymous visitor, so it's
+  // Builds one .req-row for the طلب عام (مجاني) list — this is a public
+  // community wishlist (RLS returns every request_type = 'عام' row to any
+  // signed-in user, not just its own submitter), so it deliberately shows
+  // only game/engine/status/date and never the requester's identity.
+  // Every value here can be arbitrary text typed by a user, so it's
   // assigned via textContent (never innerHTML) to avoid injecting markup.
-  function buildRequestRow(reqRow) {
+  function buildGeneralRequestRow(reqRow) {
     var row = document.createElement('div');
     row.className = 'req-row';
 
@@ -140,87 +107,190 @@
     return row;
   }
 
-  function renderRequests(list) {
-    if (!reqRowsEl) return;
-    reqRowsEl.innerHTML = '';
+  // Builds one .req-row for the طلب خاص (مدفوع) list — RLS only ever
+  // returns a signed-in user's OWN خاص rows (plus the admin's), so this
+  // list is inherently private; it additionally shows the paid state and,
+  // once the admin sets one, a real download link.
+  function buildPrivateRequestRow(reqRow) {
+    var row = document.createElement('div');
+    row.className = 'req-row req-row-private';
+
+    var gameSpan = document.createElement('span');
+    gameSpan.className = 'req-game';
+    gameSpan.textContent = reqRow.game_name || '';
+    row.appendChild(gameSpan);
+
+    var engineSpan = document.createElement('span');
+    engineSpan.textContent = reqRow.engine || '—';
+    row.appendChild(engineSpan);
+
+    var statusWrap = document.createElement('span');
+    var pill = document.createElement('span');
+    pill.className = 'pill ' + statusPillClass(reqRow.status);
+    pill.textContent = reqRow.status || 'قيد الدراسة';
+    statusWrap.appendChild(pill);
+    row.appendChild(statusWrap);
+
+    var paidWrap = document.createElement('span');
+    var paidPill = document.createElement('span');
+    paidPill.className = 'pill ' + (reqRow.paid ? 'pill-good' : 'pill-neutral');
+    paidPill.textContent = reqRow.paid ? 'مدفوع' : 'غير مدفوع';
+    paidWrap.appendChild(paidPill);
+    row.appendChild(paidWrap);
+
+    var dateSpan = document.createElement('span');
+    dateSpan.className = 'mono';
+    dateSpan.textContent = formatDateOnly(reqRow.created_at);
+    row.appendChild(dateSpan);
+
+    var actionSpan = document.createElement('span');
+    if (reqRow.delivery_url && isSafeExternalUrl(reqRow.delivery_url)) {
+      var link = document.createElement('a');
+      link.className = 'btn btn-primary btn-small';
+      link.href = reqRow.delivery_url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.textContent = 'تحميل ترجمتك';
+      actionSpan.appendChild(link);
+    } else {
+      actionSpan.textContent = '—';
+    }
+    row.appendChild(actionSpan);
+
+    return row;
+  }
+
+  // Only ever render http(s) links as clickable — main.js's window-open
+  // handler forwards these to the OS default browser (see main.js); any
+  // other scheme is shown as plain, inert text instead of a link.
+  function isSafeExternalUrl(url) {
+    return /^https?:\/\//i.test(String(url || '').trim());
+  }
+
+  function renderRequestList(rowsEl, list, buildRow, emptyText) {
+    if (!rowsEl) return;
+    rowsEl.innerHTML = '';
     if (!list || !list.length) {
       var empty = document.createElement('div');
       empty.className = 'req-empty';
-      empty.textContent = 'لا توجد طلبات بعد';
-      reqRowsEl.appendChild(empty);
+      empty.textContent = emptyText;
+      rowsEl.appendChild(empty);
       return;
     }
     list.forEach(function (reqRow) {
-      reqRowsEl.appendChild(buildRequestRow(reqRow));
+      rowsEl.appendChild(buildRow(reqRow));
     });
   }
 
-  function prependRequestRow(reqRow) {
-    if (!reqRowsEl) return;
-    var emptyNotice = reqRowsEl.querySelector('.req-empty');
-    if (emptyNotice) emptyNotice.remove();
-    reqRowsEl.insertBefore(buildRequestRow(reqRow), reqRowsEl.firstChild);
-  }
+  var reqRowsGeneral = document.getElementById('req-rows-general');
+  var reqRowsPrivate = document.getElementById('req-rows-private');
+  var reqListErrorGeneral = document.getElementById('req-list-error-general');
+  var reqListErrorPrivate = document.getElementById('req-list-error-private');
 
+  // One authenticated call returns everything RLS allows this user to see:
+  // every request_type = 'عام' row from anyone, plus this user's own rows
+  // of either type. Split client-side by request_type so a user's own
+  // خاص requests never leak into the public عام list next to it.
   function loadRequests() {
-    if (!window.HarfSupabase || !reqRowsEl) return;
-    window.HarfSupabase.listTranslationRequests().then(function (rows) {
-      if (reqListError) reqListError.hidden = true;
-      renderRequests(rows);
-    }).catch(function () {
-      reqRowsEl.innerHTML = '';
-      if (reqListError) {
-        reqListError.textContent = 'تعذّر تحميل طلبات الترجمة، تحقق من الاتصال وحاول مرة أخرى.';
-        reqListError.hidden = false;
-      }
-    });
-  }
-
-  function submitTranslationRequest() {
     if (!window.HarfSupabase) return;
-    var submitBtn = requestForm.querySelector('button[type="submit"]');
-    if (submitBtn) submitBtn.disabled = true;
-
-    var payload = {
-      game_name: reqGameNameInput.value.trim(),
-      engine: (reqEngineInput && reqEngineInput.value.trim()) || null,
-      game_link: (reqGameLinkInput && reqGameLinkInput.value.trim()) || null,
-      notes: (reqNotesInput && reqNotesInput.value.trim()) || null
-    };
-
-    window.HarfSupabase.createTranslationRequest(payload).then(function (rows) {
-      var row = rows && rows[0];
-      if (row) prependRequestRow(row);
-      requestForm.reset();
-      resetRequestFormFeedback();
-      formNote.hidden = false;
+    window.HarfSupabase.listTranslationRequests().then(function (rows) {
+      if (reqListErrorGeneral) reqListErrorGeneral.hidden = true;
+      if (reqListErrorPrivate) reqListErrorPrivate.hidden = true;
+      var general = [];
+      var priv = [];
+      (rows || []).forEach(function (reqRow) {
+        if (reqRow.request_type === 'خاص') priv.push(reqRow);
+        else general.push(reqRow);
+      });
+      renderRequestList(reqRowsGeneral, general, buildGeneralRequestRow, 'لا توجد طلبات عامة بعد');
+      renderRequestList(reqRowsPrivate, priv, buildPrivateRequestRow, 'لا توجد طلبات خاصة بعد');
     }).catch(function () {
-      formNote.hidden = true;
-      formError.textContent = 'تعذّر إرسال الطلب، تحقق من الاتصال وحاول مرة أخرى.';
-      formError.hidden = false;
-    }).finally(function () {
-      if (submitBtn) submitBtn.disabled = false;
+      if (reqRowsGeneral) reqRowsGeneral.innerHTML = '';
+      if (reqRowsPrivate) reqRowsPrivate.innerHTML = '';
+      var msg = 'تعذّر تحميل طلبات الترجمة، تحقق من الاتصال وحاول مرة أخرى.';
+      if (reqListErrorGeneral) { reqListErrorGeneral.textContent = msg; reqListErrorGeneral.hidden = false; }
+      if (reqListErrorPrivate) { reqListErrorPrivate.textContent = msg; reqListErrorPrivate.hidden = false; }
     });
   }
 
-  if (requestForm) {
-    // Anyone can submit a request — no login required — but every field
-    // marked required (currently just the game name; engine/link stay
-    // optional, like the "(لو تعرفون)" fields on the public site) must
-    // actually be filled before it goes through.
-    requestForm.querySelectorAll('[required]').forEach(function (control) {
+  // Wires one request-type panel's toggle/cancel/submit buttons — shared
+  // between the طلب عام and طلب خاص panels, which differ only in which
+  // fixed request_type they submit and which list/row-builder they prepend
+  // into on success.
+  function setupRequestPanel(cfg) {
+    if (!cfg.form) return;
+
+    function resetFeedback() {
+      cfg.formNote.hidden = true;
+      cfg.formError.hidden = true;
+      cfg.form.querySelectorAll('.field.is-invalid').forEach(function (field) {
+        field.classList.remove('is-invalid');
+      });
+    }
+
+    if (cfg.toggleBtn) {
+      cfg.toggleBtn.addEventListener('click', function () {
+        cfg.form.hidden = !cfg.form.hidden;
+        if (!cfg.form.hidden) {
+          resetFeedback();
+          cfg.form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      });
+    }
+
+    if (cfg.cancelBtn) {
+      cfg.cancelBtn.addEventListener('click', function () {
+        cfg.form.hidden = true;
+        cfg.form.reset();
+        resetFeedback();
+      });
+    }
+
+    function submit() {
+      if (!window.HarfSupabase) return;
+      var submitBtn = cfg.form.querySelector('button[type="submit"]');
+      if (submitBtn) submitBtn.disabled = true;
+
+      var payload = {
+        game_name: cfg.gameNameInput.value.trim(),
+        engine: (cfg.engineInput && cfg.engineInput.value.trim()) || null,
+        game_link: (cfg.gameLinkInput && cfg.gameLinkInput.value.trim()) || null,
+        notes: (cfg.notesInput && cfg.notesInput.value.trim()) || null,
+        request_type: cfg.type
+      };
+
+      window.HarfSupabase.createTranslationRequest(payload).then(function (rows) {
+        var row = rows && rows[0];
+        if (row && cfg.rowsEl) {
+          var emptyNotice = cfg.rowsEl.querySelector('.req-empty');
+          if (emptyNotice) emptyNotice.remove();
+          cfg.rowsEl.insertBefore(cfg.buildRow(row), cfg.rowsEl.firstChild);
+        }
+        cfg.form.reset();
+        resetFeedback();
+        cfg.formNote.hidden = false;
+      }).catch(function () {
+        cfg.formNote.hidden = true;
+        cfg.formError.textContent = 'تعذّر إرسال الطلب، تحقق من الاتصال وحاول مرة أخرى.';
+        cfg.formError.hidden = false;
+      }).finally(function () {
+        if (submitBtn) submitBtn.disabled = false;
+      });
+    }
+
+    cfg.form.querySelectorAll('[required]').forEach(function (control) {
       control.addEventListener('input', function () {
         var field = control.closest('.field');
         if (field) field.classList.remove('is-invalid');
       });
     });
 
-    requestForm.addEventListener('submit', function (e) {
+    cfg.form.addEventListener('submit', function (e) {
       e.preventDefault();
 
       var missing = [];
       var firstInvalid = null;
-      requestForm.querySelectorAll('[required]').forEach(function (control) {
+      cfg.form.querySelectorAll('[required]').forEach(function (control) {
         var field = control.closest('.field');
         var isEmpty = !control.value.trim();
         if (field) field.classList.toggle('is-invalid', isEmpty);
@@ -231,35 +301,168 @@
       });
 
       if (missing.length) {
-        formNote.hidden = true;
-        formError.textContent = 'الرجاء تعبئة الحقول التالية قبل الإرسال: ' + missing.join('، ');
-        formError.hidden = false;
+        cfg.formNote.hidden = true;
+        cfg.formError.textContent = 'الرجاء تعبئة الحقول التالية قبل الإرسال: ' + missing.join('، ');
+        cfg.formError.hidden = false;
         if (firstInvalid) firstInvalid.focus();
         return;
       }
 
-      formError.hidden = true;
-      submitTranslationRequest();
+      cfg.formError.hidden = true;
+      submit();
     });
   }
 
-  loadRequests();
+  setupRequestPanel({
+    type: 'عام',
+    toggleBtn: document.getElementById('toggle-request-form-general'),
+    form: document.getElementById('request-form-general'),
+    cancelBtn: document.getElementById('cancel-request-form-general'),
+    formNote: document.getElementById('form-note-general'),
+    formError: document.getElementById('form-error-general'),
+    gameNameInput: document.getElementById('req-general-game-name'),
+    engineInput: document.getElementById('req-general-engine'),
+    gameLinkInput: document.getElementById('req-general-game-link'),
+    notesInput: document.getElementById('req-general-notes'),
+    rowsEl: reqRowsGeneral,
+    buildRow: buildGeneralRequestRow
+  });
 
-  /* ------------------------------------------------------------------ *
-   * Translated games: fake "preparing download" confirmation
-   * ------------------------------------------------------------------ */
+  setupRequestPanel({
+    type: 'خاص',
+    toggleBtn: document.getElementById('toggle-request-form-private'),
+    form: document.getElementById('request-form-private'),
+    cancelBtn: document.getElementById('cancel-request-form-private'),
+    formNote: document.getElementById('form-note-private'),
+    formError: document.getElementById('form-error-private'),
+    gameNameInput: document.getElementById('req-private-game-name'),
+    engineInput: document.getElementById('req-private-engine'),
+    gameLinkInput: document.getElementById('req-private-game-link'),
+    notesInput: document.getElementById('req-private-notes'),
+    rowsEl: reqRowsPrivate,
+    buildRow: buildPrivateRequestRow
+  });
 
-  document.querySelectorAll('.btn-download').forEach(function (btn) {
-    var note = btn.parentElement.querySelector('.download-note');
-    if (!note) return;
-    btn.addEventListener('click', function () {
-      note.hidden = false;
-      window.clearTimeout(btn._noteTimer);
-      btn._noteTimer = window.setTimeout(function () {
-        note.hidden = true;
-      }, 3000);
+  // طلب عام / طلب خاص tab switching — same show/hide-by-key pattern as the
+  // admin dashboard's tabs further down this file.
+  var requestTypeTabs = document.querySelectorAll('.request-type-tabs .admin-tab');
+  var requestTypePanels = {
+    general: document.getElementById('request-panel-general'),
+    private: document.getElementById('request-panel-private')
+  };
+  requestTypeTabs.forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      var target = tab.dataset.requestTab;
+      requestTypeTabs.forEach(function (t) {
+        t.classList.toggle('is-active', t === tab);
+        t.setAttribute('aria-selected', String(t === tab));
+      });
+      Object.keys(requestTypePanels).forEach(function (key) {
+        if (requestTypePanels[key]) requestTypePanels[key].classList.toggle('is-active', key === target);
+      });
     });
   });
+
+  // Not called here: translation_requests is authenticated-only now, so
+  // there's nothing to load until a session exists — see enterApp() in the
+  // "Auth" section, which calls this once sign-in succeeds or an existing
+  // session is restored.
+
+  /* ------------------------------------------------------------------ *
+   * Translated games (public view): real published games fetched from
+   * Supabase. RLS already filters translated_games to `published = true`
+   * for every non-admin user; the admin UID's policy would return drafts
+   * too, so this also filters client-side to `published` rows — this is
+   * the public "what can be downloaded" view, not the admin's management
+   * list, even when an admin happens to be the one looking at it.
+   * ------------------------------------------------------------------ */
+
+  var gamesGrid = document.getElementById('games-grid');
+  var gamesEmptyState = document.getElementById('games-empty-state');
+  var gamesListError = document.getElementById('games-list-error');
+
+  // Builds one .project-card for a published translated_games row. Text
+  // values are arbitrary strings the admin typed in, assigned via
+  // textContent (never innerHTML); the download link is only rendered when
+  // its URL is http(s) — see isSafeExternalUrl() above.
+  function buildGameCard(gameRow) {
+    var card = document.createElement('div');
+    card.className = 'project-card';
+
+    var top = document.createElement('div');
+    top.className = 'project-card-top';
+    var h3 = document.createElement('h3');
+    h3.className = 'en-title';
+    h3.textContent = gameRow.game_name || '';
+    top.appendChild(h3);
+    card.appendChild(top);
+
+    if (gameRow.engine) {
+      var tag = document.createElement('p');
+      tag.className = 'tag';
+      tag.textContent = gameRow.engine;
+      card.appendChild(tag);
+    }
+
+    var metaBits = [];
+    if (gameRow.version) metaBits.push('الإصدار ' + gameRow.version);
+    if (gameRow.file_size) metaBits.push(gameRow.file_size);
+    if (metaBits.length) {
+      var meta = document.createElement('p');
+      meta.className = 'project-meta';
+      meta.textContent = metaBits.join(' · ');
+      card.appendChild(meta);
+    }
+
+    var actions = document.createElement('div');
+    actions.className = 'game-card-actions';
+    if (gameRow.download_url && isSafeExternalUrl(gameRow.download_url)) {
+      var link = document.createElement('a');
+      link.className = 'btn btn-primary btn-download';
+      link.href = gameRow.download_url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.textContent = 'تحميل';
+      actions.appendChild(link);
+    }
+    card.appendChild(actions);
+
+    return card;
+  }
+
+  function renderGames(list) {
+    if (!gamesGrid || !gamesEmptyState) return;
+    gamesGrid.innerHTML = '';
+    var published = (list || []).filter(function (gameRow) { return gameRow.published; });
+    if (!published.length) {
+      gamesGrid.hidden = true;
+      gamesEmptyState.hidden = false;
+      return;
+    }
+    published.forEach(function (gameRow) {
+      gamesGrid.appendChild(buildGameCard(gameRow));
+    });
+    gamesGrid.hidden = false;
+    gamesEmptyState.hidden = true;
+  }
+
+  function loadTranslatedGames() {
+    if (!window.HarfSupabase) return;
+    window.HarfSupabase.listTranslatedGames().then(function (rows) {
+      if (gamesListError) gamesListError.hidden = true;
+      renderGames(rows);
+    }).catch(function () {
+      if (gamesListError) {
+        gamesListError.textContent = 'تعذّر تحميل قائمة الألعاب المترجمة، تحقق من الاتصال وحاول مرة أخرى.';
+        gamesListError.hidden = false;
+      }
+    });
+  }
+
+  // Not called here: translated_games is authenticated-only, so there's
+  // nothing to load until a session exists — see enterApp() in the "Auth"
+  // section, which calls this once sign-in succeeds or an existing session
+  // is restored.
 
   /* ------------------------------------------------------------------ *
    * Theme: light/dark toggle, persisted to localStorage
@@ -302,203 +505,21 @@
   });
 
   /* ------------------------------------------------------------------ *
-   * Auth: UI-only mock login/logout. No real backend, no real accounts —
-   * "logging in" just flips a localStorage flag and a display name, and
-   * is only here to gate two specific actions (posting a comment, and the
-   * join-the-team CTA). The translation-request form stays open to
-   * everyone, logged in or not.
+   * Settings → الملف الشخصي: no gate needed any more — the whole app is
+   * behind one real sign-in (see the "Auth" section near the bottom of
+   * this file), so by the time this view can even be reached there is
+   * always a signed-in user. Populated from the current session there.
    * ------------------------------------------------------------------ */
 
-  var AUTH_KEY = 'harf-auth-user';
-  var AUTH_EMAIL_KEY = 'harf-auth-email';
-
-  function getAuthUser() {
-    try {
-      return window.localStorage.getItem(AUTH_KEY);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  function getAuthEmail() {
-    try {
-      return window.localStorage.getItem(AUTH_EMAIL_KEY);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  // `email` is the actual string typed into the mock login form (kept
-  // alongside the derived display name so Settings → الملف الشخصي can show
-  // a real name + real email instead of fabricated ones — still no real
-  // verification of it happens anywhere, see SECURITY.md).
-  function setAuthUser(name, email) {
-    try {
-      if (name) {
-        window.localStorage.setItem(AUTH_KEY, name);
-      } else {
-        window.localStorage.removeItem(AUTH_KEY);
-      }
-      if (email) {
-        window.localStorage.setItem(AUTH_EMAIL_KEY, email);
-      } else {
-        window.localStorage.removeItem(AUTH_EMAIL_KEY);
-      }
-    } catch (e) {
-      // localStorage unavailable — the session just won't survive a restart.
-    }
-  }
-
-  var guestAuthBtn = document.getElementById('guest-auth-btn');
-  var userChip = document.getElementById('user-chip');
-  var userChipName = document.getElementById('user-chip-name');
-  var userChipAvatar = document.getElementById('user-chip-avatar');
-  var logoutBtn = document.getElementById('logout-btn');
-
-  var loginOverlay = document.getElementById('login-overlay');
-  var loginForm = document.getElementById('login-form');
-  var loginEmail = document.getElementById('login-email');
-  var loginLede = document.getElementById('login-lede');
-  var loginCancelBtn = document.getElementById('login-cancel');
-  var loginCloseBtn = document.getElementById('login-close');
-
-  var pendingAction = null;
-
-  function renderAuthUI() {
-    var name = getAuthUser();
-    if (name) {
-      if (guestAuthBtn) guestAuthBtn.hidden = true;
-      if (userChip) userChip.hidden = false;
-      if (userChipName) userChipName.textContent = name;
-      if (userChipAvatar) userChipAvatar.textContent = name.trim().charAt(0) || 'ح';
-    } else {
-      if (guestAuthBtn) guestAuthBtn.hidden = false;
-      if (userChip) userChip.hidden = true;
-    }
-    renderProfilePanel();
-  }
-
-  function openLoginModal(reason) {
-    if (!loginOverlay) return;
-    if (loginLede) loginLede.textContent = reason || 'سجّل الدخول لإكمال هذا الإجراء.';
-    loginOverlay.hidden = false;
-    if (loginEmail) loginEmail.focus();
-  }
-
-  function closeLoginModal() {
-    if (!loginOverlay) return;
-    loginOverlay.hidden = true;
-    if (loginForm) loginForm.reset();
-  }
-
-  // Runs `action` right away if already logged in; otherwise prompts for a
-  // (mock) login first and runs it automatically right after sign-in.
-  function requireAuth(action, reason) {
-    if (getAuthUser()) {
-      action();
-    } else {
-      pendingAction = action;
-      openLoginModal(reason);
-    }
-  }
-
-  if (guestAuthBtn) {
-    guestAuthBtn.addEventListener('click', function () {
-      openLoginModal();
-    });
-  }
-
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', function () {
-      setAuthUser(null, null);
-      renderAuthUI();
-    });
-  }
-
-  if (loginCancelBtn) {
-    loginCancelBtn.addEventListener('click', function () {
-      pendingAction = null;
-      closeLoginModal();
-    });
-  }
-  if (loginCloseBtn) {
-    loginCloseBtn.addEventListener('click', function () {
-      pendingAction = null;
-      closeLoginModal();
-    });
-  }
-  if (loginOverlay) {
-    loginOverlay.addEventListener('click', function (e) {
-      if (e.target === loginOverlay) {
-        pendingAction = null;
-        closeLoginModal();
-      }
-    });
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && !loginOverlay.hidden) {
-        pendingAction = null;
-        closeLoginModal();
-      }
-    });
-  }
-
-  if (loginForm) {
-    loginForm.addEventListener('submit', function (e) {
-      e.preventDefault();
-      // Mock login: any email/password (or none at all) succeeds. Derive a
-      // display name from the email's local part when one was typed,
-      // otherwise fall back to the placeholder profile already shown in
-      // Settings — this is the same single local "you" throughout the app.
-      var emailVal = loginEmail ? loginEmail.value.trim() : '';
-      var name = emailVal ? emailVal.split('@')[0] : 'سارة كمال';
-      setAuthUser(name, emailVal || null);
-      renderAuthUI();
-      closeLoginModal();
-      var action = pendingAction;
-      pendingAction = null;
-      if (action) action();
-    });
-  }
-
-  /* ------------------------------------------------------------------ *
-   * Settings → الملف الشخصي: gated behind the same mock login as comments
-   * and the join-team CTA. With no user logged in, the panel is hidden
-   * entirely and a small prompt is shown instead; once logged in, it shows
-   * the real typed-in name/email captured above (still self-reported, not
-   * verified — see SECURITY.md — but no longer fabricated placeholder data).
-   * ------------------------------------------------------------------ */
-
-  var profilePanel = document.getElementById('profile-panel');
-  var profileGate = document.getElementById('profile-gate');
   var profileNameInput = document.getElementById('profile-name-input');
   var profileEmailInput = document.getElementById('profile-email-input');
-  var profileLoginBtn = document.getElementById('profile-login-btn');
-
-  function renderProfilePanel() {
-    var name = getAuthUser();
-    if (name) {
-      if (profileGate) profileGate.hidden = true;
-      if (profilePanel) profilePanel.hidden = false;
-      if (profileNameInput) profileNameInput.value = name;
-      if (profileEmailInput) profileEmailInput.value = getAuthEmail() || '—';
-    } else {
-      if (profilePanel) profilePanel.hidden = true;
-      if (profileGate) profileGate.hidden = false;
-    }
-  }
-
-  if (profileLoginBtn) {
-    profileLoginBtn.addEventListener('click', function () {
-      openLoginModal('سجّل الدخول لعرض ملفك الشخصي.');
-    });
-  }
-
-  renderAuthUI();
 
   /* ------------------------------------------------------------------ *
-   * Dashboard comments: fetched from Supabase on load; posting a new one
-   * is gated behind login (reading the existing list never was) and POSTs
-   * to Supabase using the logged-in mock display name as author_name.
+   * Dashboard comments: fetched from Supabase on load. Posting one no
+   * longer needs a login gate — being in the app at all means you're
+   * already signed in — and the author identity comes from the signed-in
+   * session (see HarfSupabase.createComment in supabase.js), never from
+   * typed input.
    * ------------------------------------------------------------------ */
 
   var commentForm = document.getElementById('comment-form');
@@ -602,13 +623,16 @@
     });
   }
 
-  function submitComment(text, authorName) {
+  function submitComment(text) {
     if (!window.HarfSupabase) return;
     clearCommentError();
     var submitBtn = commentForm.querySelector('button[type="submit"]');
     if (submitBtn) submitBtn.disabled = true;
 
-    window.HarfSupabase.createComment(authorName, text).then(function (rows) {
+    var session = window.HarfAuth && window.HarfAuth.getSession();
+    var authorName = window.HarfAuth ? window.HarfAuth.displayNameFor(session && session.user) : 'مستخدم';
+
+    window.HarfSupabase.createComment(text).then(function (rows) {
       var row = rows && rows[0];
       var createdAt = row ? row.created_at : new Date().toISOString();
       if (commentList) {
@@ -629,22 +653,22 @@
       e.preventDefault();
       var text = commentInput.value.trim();
       if (!text) return;
-      requireAuth(function () {
-        submitComment(text, getAuthUser() || 'سارة كمال');
-      }, 'سجّل الدخول لنشر تعليق.');
+      submitComment(text);
     });
   }
 
-  loadComments();
+  // Not called here: comments are authenticated-only now, so there's
+  // nothing to load until a session exists — see enterApp() in the "Auth"
+  // section, which calls this once sign-in succeeds or an existing session
+  // is restored.
 
   /* ------------------------------------------------------------------ *
-   * "قدم طلبك" join-the-team CTA: gated behind login, same as posting a
-   * comment. Opens a small modal (name/email/optional message), POSTs to
-   * the insert-only join_applications table, and never reads it back —
-   * there is no SELECT policy for anon on that table by design; it's
-   * private to the team. The translation-request form ("+ طلب جديد") is
-   * deliberately NOT gated — anyone can submit one, per the client's
-   * instruction.
+   * "قدم طلبك" join-the-team CTA: no login gate needed — being in the app
+   * at all means you're already signed in. Opens a small modal
+   * (name/email/optional message), POSTs to the join_applications table
+   * (insert-only for regular users; see HarfSupabase.createJoinApplication
+   * in supabase.js), and never reads it back here — only the admin
+   * dashboard below can read that table, per its RLS policy.
    * ------------------------------------------------------------------ */
 
   var joinBtn = document.getElementById('join-team-btn');
@@ -683,9 +707,7 @@
 
   if (joinBtn) {
     joinBtn.addEventListener('click', function () {
-      requireAuth(function () {
-        openJoinModal();
-      }, 'سجّل الدخول لتقديم طلب الانضمام.');
+      openJoinModal();
     });
   }
 
@@ -784,150 +806,32 @@
   }
 
   /* ------------------------------------------------------------------ *
-   * Admin: real Supabase Auth sign-in (see HarfAdmin in supabase.js),
-   * completely separate from the mock login above. Invisible/inert to
-   * regular users until someone deliberately opens "دخول المدير" in the
-   * sidebar footer and signs in with the founder's real Supabase account.
-   * On success this reveals the "لوحة الإدارة" nav item and the admin
-   * dashboard view; on load, a stored (and, if needed, silently
-   * refreshed) session restores that same state without a fresh login.
+   * Admin dashboard: three sub-tabs (طلبات الترجمة / التعليقات /
+   * طلبات الانضمام), each backed by the same authenticated PostgREST calls
+   * every signed-in user has access to (see HarfSupabase in supabase.js) —
+   * there is no separate admin-only client any more. What each call
+   * actually returns/allows is decided entirely server-side by RLS keyed
+   * off the signed-in user's UID (see the "Auth" section below for where
+   * that UID is checked to decide whether to show this view at all).
+   * join_applications is never read anywhere else in this app — this is
+   * the one and only place its rows are ever displayed, and only the
+   * admin UID's RLS policy actually returns any for it.
    * ------------------------------------------------------------------ */
 
   var navAdminItem = document.getElementById('nav-admin-item');
-  var sidebarAdminGuest = document.getElementById('sidebar-admin-guest');
-  var sidebarAdminActive = document.getElementById('sidebar-admin-active');
-  var adminEntryBtn = document.getElementById('admin-entry-btn');
-  var adminSignoutBtn = document.getElementById('admin-signout-btn');
 
-  var adminLoginOverlay = document.getElementById('admin-login-overlay');
-  var adminLoginForm = document.getElementById('admin-login-form');
-  var adminLoginEmail = document.getElementById('admin-login-email');
-  var adminLoginPassword = document.getElementById('admin-login-password');
-  var adminLoginError = document.getElementById('admin-login-error');
-  var adminLoginSubmit = document.getElementById('admin-login-submit');
-  var adminLoginCancelBtn = document.getElementById('admin-login-cancel');
-  var adminLoginCloseBtn = document.getElementById('admin-login-close');
-
-  function renderAdminAuthUI(signedIn) {
-    if (navAdminItem) navAdminItem.hidden = !signedIn;
-    if (sidebarAdminGuest) sidebarAdminGuest.hidden = signedIn;
-    if (sidebarAdminActive) sidebarAdminActive.hidden = !signedIn;
-    if (!signedIn && navAdminItem && navAdminItem.classList.contains('is-active')) {
-      // The admin view was open when the session ended — fall back to the
-      // regular dashboard rather than leaving an inert admin nav active.
-      showSection('dashboard');
-    }
-  }
-
-  function openAdminLoginModal() {
-    if (!adminLoginOverlay) return;
-    if (adminLoginError) adminLoginError.hidden = true;
-    adminLoginOverlay.hidden = false;
-    if (adminLoginEmail) adminLoginEmail.focus();
-  }
-
-  function closeAdminLoginModal() {
-    if (!adminLoginOverlay) return;
-    adminLoginOverlay.hidden = true;
-    if (adminLoginForm) adminLoginForm.reset();
-    if (adminLoginError) adminLoginError.hidden = true;
-  }
-
-  if (adminEntryBtn) {
-    adminEntryBtn.addEventListener('click', openAdminLoginModal);
-  }
-  if (adminLoginCancelBtn) adminLoginCancelBtn.addEventListener('click', closeAdminLoginModal);
-  if (adminLoginCloseBtn) adminLoginCloseBtn.addEventListener('click', closeAdminLoginModal);
-  if (adminLoginOverlay) {
-    adminLoginOverlay.addEventListener('click', function (e) {
-      if (e.target === adminLoginOverlay) closeAdminLoginModal();
-    });
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && !adminLoginOverlay.hidden) closeAdminLoginModal();
-    });
-  }
-
-  if (adminSignoutBtn) {
-    adminSignoutBtn.addEventListener('click', function () {
-      if (!window.HarfAdmin) return;
-      adminSignoutBtn.disabled = true;
-      window.HarfAdmin.signOut().finally(function () {
-        adminSignoutBtn.disabled = false;
-        renderAdminAuthUI(false);
-      });
-    });
-  }
-
-  if (adminLoginForm) {
-    adminLoginForm.addEventListener('submit', function (e) {
-      e.preventDefault();
-      if (!window.HarfAdmin) return;
-      if (adminLoginError) adminLoginError.hidden = true;
-      var email = adminLoginEmail ? adminLoginEmail.value.trim() : '';
-      var password = adminLoginPassword ? adminLoginPassword.value : '';
-      if (!email || !password) {
-        if (adminLoginError) {
-          adminLoginError.textContent = 'الرجاء إدخال البريد الإلكتروني وكلمة المرور.';
-          adminLoginError.hidden = false;
-        }
-        return;
-      }
-      if (adminLoginSubmit) {
-        adminLoginSubmit.disabled = true;
-        adminLoginSubmit.textContent = 'جارٍ الدخول...';
-      }
-      window.HarfAdmin.signIn(email, password).then(function () {
-        closeAdminLoginModal();
-        renderAdminAuthUI(true);
-        loadAdminData();
-        showSection('admin');
-      }).catch(function () {
-        if (adminLoginError) {
-          adminLoginError.textContent = 'بيانات الدخول غير صحيحة';
-          adminLoginError.hidden = false;
-        }
-      }).finally(function () {
-        if (adminLoginSubmit) {
-          adminLoginSubmit.disabled = false;
-          adminLoginSubmit.textContent = 'دخول';
-        }
-      });
-    });
-  }
-
-  // Restore an existing admin session on launch, refreshing it first if
-  // the access token has expired — no fresh login needed unless the
-  // refresh token itself is gone or invalid.
-  if (window.HarfAdmin && window.HarfAdmin.hasSession()) {
-    window.HarfAdmin.ensureValidSession().then(function () {
-      renderAdminAuthUI(true);
-      loadAdminData();
-    }).catch(function () {
-      renderAdminAuthUI(false);
-    });
-  } else {
-    renderAdminAuthUI(false);
-  }
-
-  /* ------------------------------------------------------------------ *
-   * Admin dashboard: three sub-tabs (طلبات الترجمة / التعليقات /
-   * طلبات الانضمام), each backed by an authenticated PostgREST call using
-   * the admin's access token (see HarfAdmin's list/updateStatus/deleteRow
-   * in supabase.js) instead of the anon key. join_applications is never
-   * read anywhere else in this app — this is the one and only place its
-   * rows are ever displayed.
-   * ------------------------------------------------------------------ */
-
-  var adminTabs = document.querySelectorAll('.admin-tab');
+  var adminTabs = document.querySelectorAll('.admin-tabs:not(.request-type-tabs) .admin-tab');
   var adminPanels = {
     requests: document.getElementById('admin-panel-requests'),
     comments: document.getElementById('admin-panel-comments'),
-    applications: document.getElementById('admin-panel-applications')
+    applications: document.getElementById('admin-panel-applications'),
+    games: document.getElementById('admin-panel-games')
   };
   var adminRowsEl = {
     requests: document.getElementById('admin-requests-rows'),
     comments: document.getElementById('admin-comments-rows'),
-    applications: document.getElementById('admin-applications-rows')
+    applications: document.getElementById('admin-applications-rows'),
+    games: document.getElementById('admin-games-rows')
   };
   var adminErrorEl = document.getElementById('admin-error');
 
@@ -1012,10 +916,77 @@
 
   var REQUEST_STATUS_OPTIONS = ['قيد الدراسة', 'مقبول', 'مرفوض', 'مكتمل'];
   var APPLICATION_STATUS_OPTIONS = ['جديد', 'تم التواصل', 'مقبول', 'مرفوض'];
+  var REQUEST_TYPE_LABEL = { 'عام': 'عام (مجاني)', 'خاص': 'خاص (مدفوع)' };
+
+  // Builds the "مدفوع toggle + رابط تسليم" mini-form shown only for طلب
+  // خاص rows. Uses HarfSupabase.updateFields() (a small generic PATCH
+  // helper, see supabase.js) rather than updateStatus(), since it needs to
+  // set the `paid` boolean and `delivery_url` columns, not `status`.
+  function buildPaymentControls(row) {
+    var wrap = document.createElement('div');
+    wrap.className = 'admin-payment-controls';
+
+    var paidBtn = document.createElement('button');
+    paidBtn.type = 'button';
+    paidBtn.className = 'admin-paid-toggle' + (row.paid ? ' is-paid' : '');
+    paidBtn.textContent = row.paid ? 'مدفوع ✓' : 'تحديد كمدفوع';
+    paidBtn.addEventListener('click', function () {
+      var next = !row.paid;
+      paidBtn.disabled = true;
+      window.HarfSupabase.updateFields('translation_requests', row.id, { paid: next }).then(function () {
+        row.paid = next;
+        paidBtn.classList.toggle('is-paid', next);
+        paidBtn.textContent = next ? 'مدفوع ✓' : 'تحديد كمدفوع';
+      }).catch(function () {
+        setAdminError('تعذّر تحديث حالة الدفع، حاول مرة أخرى.');
+      }).finally(function () {
+        paidBtn.disabled = false;
+      });
+    });
+    wrap.appendChild(paidBtn);
+
+    var urlRow = document.createElement('div');
+    urlRow.className = 'admin-delivery-row';
+
+    var urlInput = document.createElement('input');
+    urlInput.type = 'text';
+    urlInput.className = 'admin-delivery-input';
+    urlInput.placeholder = 'رابط التسليم (Google Drive وغيره)';
+    urlInput.value = row.delivery_url || '';
+    urlInput.maxLength = 1000;
+    urlRow.appendChild(urlInput);
+
+    var saveBtn = document.createElement('button');
+    saveBtn.type = 'button';
+    saveBtn.className = 'link-btn admin-delivery-save';
+    saveBtn.textContent = 'حفظ';
+    saveBtn.addEventListener('click', function () {
+      var value = urlInput.value.trim();
+      saveBtn.disabled = true;
+      window.HarfSupabase.updateFields('translation_requests', row.id, { delivery_url: value || null }).then(function () {
+        row.delivery_url = value || null;
+      }).catch(function () {
+        setAdminError('تعذّر حفظ رابط التسليم، حاول مرة أخرى.');
+      }).finally(function () {
+        saveBtn.disabled = false;
+      });
+    });
+    urlRow.appendChild(saveBtn);
+
+    wrap.appendChild(urlRow);
+    return wrap;
+  }
 
   function buildAdminRequestRow(row) {
     var el = document.createElement('div');
     el.className = 'admin-row admin-row-requests';
+
+    var typeCell = document.createElement('span');
+    var typePill = document.createElement('span');
+    typePill.className = 'pill ' + (row.request_type === 'خاص' ? 'pill-mid' : 'pill-neutral');
+    typePill.textContent = REQUEST_TYPE_LABEL[row.request_type] || 'عام (مجاني)';
+    typeCell.appendChild(typePill);
+    el.appendChild(typeCell);
 
     el.appendChild(truncatedCell(row.game_name));
     el.appendChild(truncatedCell(row.engine));
@@ -1024,7 +995,7 @@
 
     var statusCell = document.createElement('span');
     statusCell.appendChild(buildStatusSelect(row.status, REQUEST_STATUS_OPTIONS, function (next, revert) {
-      window.HarfAdmin.updateStatus('translation_requests', row.id, next).then(function () {
+      window.HarfSupabase.updateStatus('translation_requests', row.id, next).then(function () {
         row.status = next;
       }).catch(function () {
         revert();
@@ -1033,6 +1004,15 @@
     }));
     el.appendChild(statusCell);
 
+    var paymentCell = document.createElement('span');
+    if (row.request_type === 'خاص') {
+      paymentCell.appendChild(buildPaymentControls(row));
+    } else {
+      paymentCell.className = 'admin-cell-dim';
+      paymentCell.textContent = '—';
+    }
+    el.appendChild(paymentCell);
+
     var dateSpan = document.createElement('span');
     dateSpan.className = 'mono';
     dateSpan.textContent = formatDateOnly(row.created_at);
@@ -1040,7 +1020,7 @@
 
     var actionsCell = document.createElement('span');
     actionsCell.appendChild(buildDeleteButton(function (done) {
-      window.HarfAdmin.deleteRow('translation_requests', row.id).then(function () {
+      window.HarfSupabase.deleteRow('translation_requests', row.id).then(function () {
         el.remove();
         if (!adminRowsEl.requests.children.length) {
           adminEmptyRow(adminRowsEl.requests, 'لا توجد طلبات ترجمة بعد');
@@ -1069,7 +1049,7 @@
 
     var actionsCell = document.createElement('span');
     actionsCell.appendChild(buildDeleteButton(function (done) {
-      window.HarfAdmin.deleteRow('comments', row.id).then(function () {
+      window.HarfSupabase.deleteRow('comments', row.id).then(function () {
         el.remove();
         if (!adminRowsEl.comments.children.length) {
           adminEmptyRow(adminRowsEl.comments, 'لا توجد تعليقات بعد');
@@ -1094,7 +1074,7 @@
 
     var statusCell = document.createElement('span');
     statusCell.appendChild(buildStatusSelect(row.status, APPLICATION_STATUS_OPTIONS, function (next, revert) {
-      window.HarfAdmin.updateStatus('join_applications', row.id, next).then(function () {
+      window.HarfSupabase.updateStatus('join_applications', row.id, next).then(function () {
         row.status = next;
       }).catch(function () {
         revert();
@@ -1110,7 +1090,7 @@
 
     var actionsCell = document.createElement('span');
     actionsCell.appendChild(buildDeleteButton(function (done) {
-      window.HarfAdmin.deleteRow('join_applications', row.id).then(function () {
+      window.HarfSupabase.deleteRow('join_applications', row.id).then(function () {
         el.remove();
         if (!adminRowsEl.applications.children.length) {
           adminEmptyRow(adminRowsEl.applications, 'لا توجد طلبات انضمام بعد');
@@ -1127,7 +1107,7 @@
 
   function loadAdminRequests() {
     if (!adminRowsEl.requests) return;
-    window.HarfAdmin.listTranslationRequests().then(function (rows) {
+    window.HarfSupabase.listTranslationRequests().then(function (rows) {
       adminRowsEl.requests.innerHTML = '';
       if (!rows || !rows.length) {
         adminEmptyRow(adminRowsEl.requests, 'لا توجد طلبات ترجمة بعد');
@@ -1143,7 +1123,7 @@
 
   function loadAdminComments() {
     if (!adminRowsEl.comments) return;
-    window.HarfAdmin.listComments().then(function (rows) {
+    window.HarfSupabase.listComments().then(function (rows) {
       adminRowsEl.comments.innerHTML = '';
       if (!rows || !rows.length) {
         adminEmptyRow(adminRowsEl.comments, 'لا توجد تعليقات بعد');
@@ -1159,7 +1139,7 @@
 
   function loadAdminApplications() {
     if (!adminRowsEl.applications) return;
-    window.HarfAdmin.listJoinApplications().then(function (rows) {
+    window.HarfSupabase.listJoinApplications().then(function (rows) {
       adminRowsEl.applications.innerHTML = '';
       if (!rows || !rows.length) {
         adminEmptyRow(adminRowsEl.applications, 'لا توجد طلبات انضمام بعد');
@@ -1173,11 +1153,378 @@
     });
   }
 
+  // Builds one row for the "الألعاب المترجمة" admin tab: game/engine/
+  // version/file_size, a نشر/إلغاء النشر toggle that flips `published` via
+  // updateFields(), and a delete button — same shape as the other admin
+  // tables above.
+  function buildAdminGameRow(row) {
+    var el = document.createElement('div');
+    el.className = 'admin-row admin-row-games';
+
+    el.appendChild(truncatedCell(row.game_name));
+    el.appendChild(truncatedCell(row.engine));
+    el.appendChild(truncatedCell(row.version));
+    el.appendChild(truncatedCell(row.file_size));
+
+    var statusCell = document.createElement('span');
+    var publishBtn = document.createElement('button');
+    publishBtn.type = 'button';
+    publishBtn.className = 'admin-publish-toggle' + (row.published ? ' is-published' : '');
+    publishBtn.textContent = row.published ? 'منشورة — إلغاء النشر' : 'مسودة — نشر';
+    publishBtn.addEventListener('click', function () {
+      var next = !row.published;
+      publishBtn.disabled = true;
+      window.HarfSupabase.updateFields('translated_games', row.id, { published: next }).then(function () {
+        row.published = next;
+        publishBtn.classList.toggle('is-published', next);
+        publishBtn.textContent = next ? 'منشورة — إلغاء النشر' : 'مسودة — نشر';
+      }).catch(function () {
+        setAdminError('تعذّر تحديث حالة النشر، حاول مرة أخرى.');
+      }).finally(function () {
+        publishBtn.disabled = false;
+      });
+    });
+    statusCell.appendChild(publishBtn);
+    el.appendChild(statusCell);
+
+    var dateSpan = document.createElement('span');
+    dateSpan.className = 'mono';
+    dateSpan.textContent = formatDateOnly(row.created_at);
+    el.appendChild(dateSpan);
+
+    var actionsCell = document.createElement('span');
+    actionsCell.appendChild(buildDeleteButton(function (done) {
+      window.HarfSupabase.deleteRow('translated_games', row.id).then(function () {
+        el.remove();
+        if (!adminRowsEl.games.children.length) {
+          adminEmptyRow(adminRowsEl.games, 'لا توجد ألعاب مترجمة بعد');
+        }
+      }).catch(function () {
+        done();
+        setAdminError('تعذّر حذف اللعبة، حاول مرة أخرى.');
+      });
+    }));
+    el.appendChild(actionsCell);
+
+    return el;
+  }
+
+  function loadAdminGames() {
+    if (!adminRowsEl.games) return;
+    window.HarfSupabase.listTranslatedGames().then(function (rows) {
+      adminRowsEl.games.innerHTML = '';
+      if (!rows || !rows.length) {
+        adminEmptyRow(adminRowsEl.games, 'لا توجد ألعاب مترجمة بعد');
+        return;
+      }
+      rows.forEach(function (row) {
+        adminRowsEl.games.appendChild(buildAdminGameRow(row));
+      });
+    }).catch(function () {
+      setAdminError('تعذّر تحميل الألعاب المترجمة، حاول مرة أخرى.');
+    });
+  }
+
   function loadAdminData() {
-    if (!window.HarfAdmin) return;
+    if (!window.HarfSupabase) return;
     setAdminError(null);
     loadAdminRequests();
     loadAdminComments();
     loadAdminApplications();
+    loadAdminGames();
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Admin: add a new translated game as a draft (published defaults to
+   * false server-side, but is also sent explicitly here for clarity) —
+   * publishing happens afterward via the نشر toggle in buildAdminGameRow().
+   * ------------------------------------------------------------------ */
+
+  var adminGameForm = document.getElementById('admin-game-form');
+  var adminGameFormError = document.getElementById('admin-game-form-error');
+  var adminGameFormNote = document.getElementById('admin-game-form-note');
+  var adminGameNameInput = document.getElementById('admin-game-name');
+  var adminGameEngineInput = document.getElementById('admin-game-engine');
+  var adminGameVersionInput = document.getElementById('admin-game-version');
+  var adminGameFilesizeInput = document.getElementById('admin-game-filesize');
+  var adminGameDownloadUrlInput = document.getElementById('admin-game-download-url');
+
+  if (adminGameForm) {
+    adminGameForm.querySelectorAll('[required]').forEach(function (control) {
+      control.addEventListener('input', function () {
+        var field = control.closest('.field');
+        if (field) field.classList.remove('is-invalid');
+      });
+    });
+
+    adminGameForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (adminGameFormNote) adminGameFormNote.hidden = true;
+      if (adminGameFormError) adminGameFormError.hidden = true;
+
+      var missing = [];
+      var firstInvalid = null;
+      adminGameForm.querySelectorAll('[required]').forEach(function (control) {
+        var field = control.closest('.field');
+        var isEmpty = !control.value.trim();
+        if (field) field.classList.toggle('is-invalid', isEmpty);
+        if (isEmpty) {
+          missing.push((field && field.dataset.field) || 'حقل مطلوب');
+          if (!firstInvalid) firstInvalid = control;
+        }
+      });
+      if (missing.length) {
+        if (adminGameFormError) {
+          adminGameFormError.textContent = 'الرجاء تعبئة الحقول التالية قبل الإرسال: ' + missing.join('، ');
+          adminGameFormError.hidden = false;
+        }
+        if (firstInvalid) firstInvalid.focus();
+        return;
+      }
+
+      var payload = {
+        game_name: adminGameNameInput.value.trim(),
+        engine: (adminGameEngineInput && adminGameEngineInput.value.trim()) || null,
+        version: (adminGameVersionInput && adminGameVersionInput.value.trim()) || null,
+        file_size: (adminGameFilesizeInput && adminGameFilesizeInput.value.trim()) || null,
+        download_url: adminGameDownloadUrlInput.value.trim(),
+        published: false
+      };
+
+      var submitBtn = adminGameForm.querySelector('button[type="submit"]');
+      if (submitBtn) submitBtn.disabled = true;
+
+      window.HarfSupabase.createTranslatedGame(payload).then(function (rows) {
+        var row = rows && rows[0];
+        if (row && adminRowsEl.games) {
+          var emptyNotice = adminRowsEl.games.querySelector('.admin-empty');
+          if (emptyNotice) emptyNotice.remove();
+          adminRowsEl.games.insertBefore(buildAdminGameRow(row), adminRowsEl.games.firstChild);
+        }
+        adminGameForm.reset();
+        if (adminGameFormNote) adminGameFormNote.hidden = false;
+      }).catch(function () {
+        if (adminGameFormError) {
+          adminGameFormError.textContent = 'تعذّر إضافة اللعبة، حاول مرة أخرى.';
+          adminGameFormError.hidden = false;
+        }
+      }).finally(function () {
+        if (submitBtn) submitBtn.disabled = false;
+      });
+    });
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Auth: one real Supabase Auth sign-in for the whole app (see HarfAuth
+   * in supabase.js). Until there is a valid session, the auth screen is
+   * the ONLY thing rendered — no topbar, no sidebar, no content — and it
+   * is the app's default state in the HTML (#app-topbar and #app-shell
+   * start `hidden`; #auth-screen starts visible). Once signed in, this
+   * reveals the topbar + app shell and — for exactly one UID, the
+   * founder's real account — the "لوحة الإدارة" nav item too. There is no
+   * more separate admin login: whoever signs in with that account gets
+   * the admin view automatically, and every server-side privilege it has
+   * (seeing every row, updating/deleting) comes from RLS policies keyed
+   * off that UID, not from anything decided here.
+   * ------------------------------------------------------------------ */
+
+  var authScreen = document.getElementById('auth-screen');
+  var appTopbar = document.getElementById('app-topbar');
+  var appShell = document.getElementById('app-shell');
+
+  var userChipName = document.getElementById('user-chip-name');
+  var userChipAvatar = document.getElementById('user-chip-avatar');
+  var logoutBtn = document.getElementById('logout-btn');
+
+  var authTabSignin = document.getElementById('auth-tab-signin');
+  var authTabSignup = document.getElementById('auth-tab-signup');
+  var signinForm = document.getElementById('signin-form');
+  var signinEmail = document.getElementById('signin-email');
+  var signinPassword = document.getElementById('signin-password');
+  var signinError = document.getElementById('signin-error');
+  var signinSubmit = document.getElementById('signin-submit');
+  var signupForm = document.getElementById('signup-form');
+  var signupName = document.getElementById('signup-name');
+  var signupEmail = document.getElementById('signup-email');
+  var signupPassword = document.getElementById('signup-password');
+  var signupError = document.getElementById('signup-error');
+  var signupSuccess = document.getElementById('signup-success');
+  var signupSubmit = document.getElementById('signup-submit');
+
+  function showAuthScreen() {
+    if (authScreen) authScreen.hidden = false;
+    if (appTopbar) appTopbar.hidden = true;
+    if (appShell) appShell.hidden = true;
+  }
+
+  function showApp() {
+    if (authScreen) authScreen.hidden = true;
+    if (appTopbar) appTopbar.hidden = false;
+    if (appShell) appShell.hidden = false;
+  }
+
+  function setAuthMode(mode) {
+    var isSignup = mode === 'signup';
+    if (authTabSignin) {
+      authTabSignin.classList.toggle('is-active', !isSignup);
+      authTabSignin.setAttribute('aria-selected', String(!isSignup));
+    }
+    if (authTabSignup) {
+      authTabSignup.classList.toggle('is-active', isSignup);
+      authTabSignup.setAttribute('aria-selected', String(isSignup));
+    }
+    if (signinForm) signinForm.hidden = isSignup;
+    if (signupForm) signupForm.hidden = !isSignup;
+    if (signinError) signinError.hidden = true;
+    if (signupError) signupError.hidden = true;
+  }
+
+  if (authTabSignin) authTabSignin.addEventListener('click', function () { setAuthMode('signin'); });
+  if (authTabSignup) authTabSignup.addEventListener('click', function () { setAuthMode('signup'); });
+
+  // Populates the topbar user chip and the always-visible Settings →
+  // الملف الشخصي panel from the current session, and shows/hides the admin
+  // nav item based on whether this UID is the one founder account.
+  function applySessionToUI(session) {
+    var user = session && session.user;
+    var name = window.HarfAuth.displayNameFor(user);
+    if (userChipName) userChipName.textContent = name;
+    if (userChipAvatar) userChipAvatar.textContent = name.trim().charAt(0) || 'ح';
+    if (profileNameInput) profileNameInput.value = name;
+    if (profileEmailInput) profileEmailInput.value = (user && user.email) || '—';
+
+    var admin = window.HarfAuth.isAdmin(session);
+    if (navAdminItem) navAdminItem.hidden = !admin;
+    if (!admin && navAdminItem && navAdminItem.classList.contains('is-active')) {
+      // The admin view was open under a since-replaced admin session —
+      // fall back to the regular dashboard rather than leaving an inert
+      // admin nav active.
+      showSection('dashboard');
+    }
+  }
+
+  function enterApp(session) {
+    applySessionToUI(session);
+    showApp();
+    loadComments();
+    loadRequests();
+    loadTranslatedGames();
+    if (window.HarfAuth.isAdmin(session)) loadAdminData();
+  }
+
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', function () {
+      logoutBtn.disabled = true;
+      window.HarfAuth.signOut().finally(function () {
+        logoutBtn.disabled = false;
+        showAuthScreen();
+      });
+    });
+  }
+
+  function setFormError(el, message) {
+    if (!el) return;
+    el.textContent = message;
+    el.hidden = false;
+  }
+
+  if (signinForm) {
+    signinForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (signinError) signinError.hidden = true;
+      var email = signinEmail ? signinEmail.value.trim() : '';
+      var password = signinPassword ? signinPassword.value : '';
+      if (!email || !password) {
+        setFormError(signinError, 'الرجاء إدخال البريد الإلكتروني وكلمة المرور.');
+        return;
+      }
+      if (signinSubmit) {
+        signinSubmit.disabled = true;
+        signinSubmit.textContent = 'جارٍ الدخول...';
+      }
+      window.HarfAuth.signIn(email, password).then(function (session) {
+        signinForm.reset();
+        enterApp(session);
+      }).catch(function (err) {
+        setFormError(signinError, (err && err.message) || 'بيانات الدخول غير صحيحة');
+      }).finally(function () {
+        if (signinSubmit) {
+          signinSubmit.disabled = false;
+          signinSubmit.textContent = 'تسجيل الدخول';
+        }
+      });
+    });
+  }
+
+  if (signupForm) {
+    signupForm.querySelectorAll('[required]').forEach(function (control) {
+      control.addEventListener('input', function () {
+        var field = control.closest('.field');
+        if (field) field.classList.remove('is-invalid');
+      });
+    });
+
+    signupForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (signupError) signupError.hidden = true;
+      if (signupSuccess) signupSuccess.hidden = true;
+
+      var missing = [];
+      var firstInvalid = null;
+      signupForm.querySelectorAll('[required]').forEach(function (control) {
+        var field = control.closest('.field');
+        var isEmpty = !control.value.trim();
+        if (field) field.classList.toggle('is-invalid', isEmpty);
+        if (isEmpty) {
+          missing.push((field && field.dataset.field) || 'حقل مطلوب');
+          if (!firstInvalid) firstInvalid = control;
+        }
+      });
+      if (missing.length) {
+        setFormError(signupError, 'الرجاء تعبئة الحقول التالية قبل الإرسال: ' + missing.join('، '));
+        if (firstInvalid) firstInvalid.focus();
+        return;
+      }
+
+      var name = signupName.value.trim();
+      var email = signupEmail.value.trim();
+      var password = signupPassword.value;
+
+      if (signupSubmit) {
+        signupSubmit.disabled = true;
+        signupSubmit.textContent = 'جارٍ الإنشاء...';
+      }
+      window.HarfAuth.signUp(email, password, name).then(function () {
+        signupForm.reset();
+        setAuthMode('signin');
+        if (signinEmail) signinEmail.value = email;
+        if (signupSuccess) {
+          signupSuccess.textContent = 'أرسلنا رسالة تأكيد إلى بريدك الإلكتروني. افتحها واضغط على رابط التأكيد، ثم سجّل الدخول من هنا.';
+          signupSuccess.hidden = false;
+        }
+      }).catch(function (err) {
+        setFormError(signupError, (err && err.message) || 'تعذّر إنشاء الحساب، تحقق من البيانات أو جرّب تسجيل الدخول إذا كان لديك حساب');
+      }).finally(function () {
+        if (signupSubmit) {
+          signupSubmit.disabled = false;
+          signupSubmit.textContent = 'إنشاء حساب';
+        }
+      });
+    });
+  }
+
+  // Restore an existing session on launch, refreshing it first if the
+  // access token has expired. The auth screen is already what the HTML
+  // shows by default, so a missing/invalid/unrefreshable session needs no
+  // extra handling here — it's a no-op in that case.
+  if (window.HarfAuth && window.HarfAuth.hasSession()) {
+    window.HarfAuth.ensureValidSession().then(function (session) {
+      // Best-effort self-heal: if a previous sign-in's profile-row check
+      // failed transiently, retry it quietly now without blocking entry.
+      window.HarfAuth.ensureProfile(session).catch(function () {});
+      enterApp(session);
+    }).catch(function () {
+      showAuthScreen();
+    });
   }
 })();

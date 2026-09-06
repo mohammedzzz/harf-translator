@@ -18,77 +18,78 @@
 <body>
 <div class="grain"></div>
 
-<header class="topbar">
+<!-- ===================== AUTH SCREEN (real Supabase Auth — the only way into the app) =====================
+     Shown alone (no topbar, no sidebar, no content) whenever there is no
+     valid session. Toggles between the sign-in and sign-up forms without
+     navigating anywhere — see renderer.js's "App bootstrap / auth gate"
+     section. -->
+<div class="auth-screen" id="auth-screen">
+  <div class="auth-card">
+    <div class="wordmark auth-wordmark">
+      <span class="wordmark-brand">HARF<span class="dot">.</span></span>
+      <span class="wordmark-sub">لترجمة الألعاب</span>
+    </div>
+
+    <div class="auth-toggle" role="tablist">
+      <button class="auth-toggle-btn is-active" type="button" data-auth-mode="signin" id="auth-tab-signin" role="tab" aria-selected="true">تسجيل الدخول</button>
+      <button class="auth-toggle-btn" type="button" data-auth-mode="signup" id="auth-tab-signup" role="tab" aria-selected="false">إنشاء حساب</button>
+    </div>
+
+    <form class="auth-form" id="signin-form" novalidate>
+      <div class="form-grid">
+        <label class="field field-wide" data-field="البريد الإلكتروني">
+          <span>البريد الإلكتروني</span>
+          <input type="email" id="signin-email" required placeholder="you@example.com" autocomplete="off" maxlength="254" />
+        </label>
+        <label class="field field-wide" data-field="كلمة المرور">
+          <span>كلمة المرور</span>
+          <input type="password" id="signin-password" required placeholder="••••••••" autocomplete="off" />
+        </label>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" id="signin-submit">تسجيل الدخول</button>
+      </div>
+      <p class="form-note form-error" id="signin-error" hidden></p>
+    </form>
+
+    <form class="auth-form" id="signup-form" novalidate hidden>
+      <div class="form-grid">
+        <label class="field field-wide" data-field="الاسم الظاهر">
+          <span>الاسم الظاهر</span>
+          <input type="text" id="signup-name" required placeholder="كما يظهر للآخرين" autocomplete="off" maxlength="100" />
+        </label>
+        <label class="field field-wide" data-field="البريد الإلكتروني">
+          <span>البريد الإلكتروني</span>
+          <input type="email" id="signup-email" required placeholder="you@example.com" autocomplete="off" maxlength="254" />
+        </label>
+        <label class="field field-wide" data-field="كلمة المرور">
+          <span>كلمة المرور</span>
+          <input type="password" id="signup-password" required placeholder="••••••••" autocomplete="off" />
+        </label>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" id="signup-submit">إنشاء حساب</button>
+      </div>
+      <p class="form-note form-error" id="signup-error" hidden></p>
+      <p class="form-note" id="signup-success" hidden></p>
+    </form>
+  </div>
+</div>
+
+<header class="topbar" id="app-topbar" hidden>
   <div class="wordmark">
     <span class="wordmark-brand">HARF<span class="dot">.</span></span>
     <span class="wordmark-sub">لترجمة الألعاب</span>
   </div>
   <div class="topbar-end">
-    <span class="build-pill">الإصدار 0.3</span>
-    <button class="btn btn-ghost btn-small" type="button" id="guest-auth-btn">تسجيل الدخول</button>
-    <div class="user-chip" id="user-chip" hidden>
+    <span class="build-pill">الإصدار 0.4</span>
+    <div class="user-chip" id="user-chip">
       <span class="user-chip-avatar" id="user-chip-avatar">س</span>
       <span class="user-chip-name" id="user-chip-name">سارة كمال</span>
       <button class="link-btn" type="button" id="logout-btn">تسجيل الخروج</button>
     </div>
   </div>
 </header>
-
-<!-- ===================== LOGIN MODAL (mock — no real backend) ===================== -->
-<div class="modal-overlay" id="login-overlay" hidden>
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="login-title">
-    <div class="modal-head">
-      <h2 id="login-title">تسجيل الدخول</h2>
-      <button class="modal-close" type="button" id="login-close" aria-label="إغلاق">×</button>
-    </div>
-    <p class="modal-lede" id="login-lede">سجّل الدخول لإكمال هذا الإجراء.</p>
-    <form id="login-form" novalidate>
-      <div class="form-grid">
-        <label class="field field-wide">
-          <span>البريد الإلكتروني</span>
-          <input type="email" id="login-email" placeholder="you@example.com" autocomplete="off" maxlength="254" />
-        </label>
-        <label class="field field-wide">
-          <span>كلمة المرور</span>
-          <input type="password" id="login-password" placeholder="••••••••" autocomplete="off" />
-        </label>
-      </div>
-      <div class="form-actions">
-        <button type="button" class="btn btn-ghost" id="login-cancel">إلغاء</button>
-        <button type="submit" class="btn btn-primary">تسجيل الدخول</button>
-      </div>
-      <p class="modal-hint">نموذج تجريبي فقط — لا يوجد تحقق فعلي، أي بريد وكلمة مرور يعملان.</p>
-    </form>
-  </div>
-</div>
-
-<!-- ===================== ADMIN LOGIN MODAL (real Supabase Auth — separate from the mock login above) ===================== -->
-<div class="modal-overlay" id="admin-login-overlay" hidden>
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="admin-login-title">
-    <div class="modal-head">
-      <h2 id="admin-login-title">دخول المدير</h2>
-      <button class="modal-close" type="button" id="admin-login-close" aria-label="إغلاق">×</button>
-    </div>
-    <p class="modal-lede">تسجيل دخول حقيقي عبر حساب Supabase الخاص بمالك الفريق — غير متاح لبقية أعضاء الفريق أو الزوار.</p>
-    <form id="admin-login-form" novalidate>
-      <div class="form-grid">
-        <label class="field field-wide">
-          <span>البريد الإلكتروني</span>
-          <input type="email" id="admin-login-email" required placeholder="you@example.com" autocomplete="off" maxlength="254" />
-        </label>
-        <label class="field field-wide">
-          <span>كلمة المرور</span>
-          <input type="password" id="admin-login-password" required placeholder="••••••••" autocomplete="off" />
-        </label>
-      </div>
-      <div class="form-actions">
-        <button type="button" class="btn btn-ghost" id="admin-login-cancel">إلغاء</button>
-        <button type="submit" class="btn btn-primary" id="admin-login-submit">دخول</button>
-      </div>
-      <p class="form-note form-error" id="admin-login-error" hidden></p>
-    </form>
-  </div>
-</div>
 
 <!-- ===================== JOIN-THE-TEAM MODAL ===================== -->
 <div class="modal-overlay" id="join-overlay" hidden>
@@ -122,7 +123,7 @@
   </div>
 </div>
 
-<div class="shell">
+<div class="shell" id="app-shell" hidden>
   <nav class="sidebar" aria-label="التنقل الرئيسي">
     <ul class="nav-list">
       <li>
@@ -138,7 +139,7 @@
           <span class="nav-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>
           </span>
-          <span class="nav-label">لوحة التحكم</span>
+          <span class="nav-label">الرئيسية</span>
         </button>
       </li>
       <li>
@@ -176,15 +177,7 @@
     </ul>
 
     <div class="sidebar-foot">
-      <p>فريق حرف التطوعي</p>
-      <p class="muted">ترجمة الألعاب بلمسة إنسانية</p>
-      <div class="sidebar-admin" id="sidebar-admin-guest">
-        <button class="admin-entry-link" type="button" id="admin-entry-btn">دخول المدير</button>
-      </div>
-      <div class="sidebar-admin" id="sidebar-admin-active" hidden>
-        <p class="sidebar-admin-status">مسجّل كمدير</p>
-        <button class="admin-entry-link" type="button" id="admin-signout-btn">تسجيل الخروج</button>
-      </div>
+      <p>فريق حرف</p>
     </div>
   </nav>
 
@@ -195,13 +188,14 @@
       <div class="section-head">
         <p class="eyebrow">وصول مقيّد</p>
         <h1>لوحة الإدارة</h1>
-        <p class="lede">إدارة طلبات الترجمة والتعليقات وطلبات الانضمام. مرئية فقط بعد الدخول بحساب المدير الحقيقي عبر Supabase.</p>
+        <p class="lede">إدارة طلبات الترجمة والتعليقات وطلبات الانضمام والألعاب المترجمة. مرئية فقط بعد الدخول بحساب المدير الحقيقي عبر Supabase.</p>
       </div>
 
       <div class="admin-tabs" role="tablist">
         <button class="admin-tab is-active" data-admin-tab="requests" type="button">طلبات الترجمة</button>
         <button class="admin-tab" data-admin-tab="comments" type="button">التعليقات</button>
         <button class="admin-tab" data-admin-tab="applications" type="button">طلبات الانضمام</button>
+        <button class="admin-tab" data-admin-tab="games" type="button">الألعاب المترجمة</button>
       </div>
 
       <p class="form-note form-error" id="admin-error" hidden></p>
@@ -210,7 +204,7 @@
       <div class="admin-panel is-active" id="admin-panel-requests">
         <div class="admin-table">
           <div class="admin-row admin-row-requests admin-row-head">
-            <span>اللعبة</span><span>المحرك</span><span>الرابط</span><span>ملاحظات</span><span>الحالة</span><span>التاريخ</span><span></span>
+            <span>النوع</span><span>اللعبة</span><span>المحرك</span><span>الرابط</span><span>ملاحظات</span><span>الحالة</span><span>الدفع والتسليم</span><span>التاريخ</span><span></span>
           </div>
           <div id="admin-requests-rows"></div>
         </div>
@@ -235,13 +229,54 @@
           <div id="admin-applications-rows"></div>
         </div>
       </div>
+
+      <!-- الألعاب المترجمة: إضافة كمسودة، ثم نشر/إلغاء نشر لكل لعبة -->
+      <div class="admin-panel" id="admin-panel-games">
+        <form class="panel" id="admin-game-form" novalidate>
+          <div class="panel-head"><h2>إضافة لعبة مترجمة</h2></div>
+          <div class="form-grid">
+            <label class="field" data-field="اسم اللعبة">
+              <span>اسم اللعبة</span>
+              <input type="text" id="admin-game-name" required placeholder="مثال: Ashfall Reach" maxlength="200" />
+            </label>
+            <label class="field" data-field="المحرك">
+              <span>المحرك</span>
+              <input type="text" id="admin-game-engine" placeholder="مثال: Unity" maxlength="200" />
+            </label>
+            <label class="field" data-field="الإصدار">
+              <span>الإصدار</span>
+              <input type="text" id="admin-game-version" placeholder="مثال: 1.0.2" maxlength="100" />
+            </label>
+            <label class="field" data-field="حجم الملف">
+              <span>حجم الملف</span>
+              <input type="text" id="admin-game-filesize" placeholder="مثال: 480 MB" maxlength="50" />
+            </label>
+            <label class="field field-wide" data-field="رابط التحميل">
+              <span>رابط التحميل</span>
+              <input type="text" id="admin-game-download-url" required placeholder="https://" maxlength="1000" />
+            </label>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">إضافة كمسودة</button>
+          </div>
+          <p class="form-note form-error" id="admin-game-form-error" hidden></p>
+          <p class="form-note" id="admin-game-form-note" hidden>أُضيفت اللعبة كمسودة — اضغط "نشر" لإظهارها للمستخدمين.</p>
+        </form>
+
+        <div class="admin-table">
+          <div class="admin-row admin-row-games admin-row-head">
+            <span>اللعبة</span><span>المحرك</span><span>الإصدار</span><span>الحجم</span><span>الحالة</span><span>التاريخ</span><span></span>
+          </div>
+          <div id="admin-games-rows"></div>
+        </div>
+      </div>
     </section>
 
     <!-- ===================== DASHBOARD ===================== -->
     <section class="view is-active" id="view-dashboard">
       <div class="section-head">
         <p class="eyebrow">نظرة عامة</p>
-        <h1>لوحة التحكم</h1>
+        <h1>الرئيسية</h1>
         <p class="lede">ملخص سريع لنشاط الفريق والمشاريع الجارية هذا الأسبوع.</p>
       </div>
 
@@ -326,55 +361,127 @@
     <!-- ===================== TRANSLATION REQUESTS ===================== -->
     <section class="view" id="view-requests">
       <div class="section-head">
-        <div class="section-head-row">
-          <div>
-            <p class="eyebrow">صندوق الوارد</p>
-            <h1>طلبات الترجمة</h1>
-            <p class="lede">طلبات مقترحة من المجتمع لترجمة ألعاب جديدة.</p>
+        <p class="eyebrow">صندوق الوارد</p>
+        <h1>طلبات الترجمة</h1>
+        <p class="lede">طلب عام مجاني للألعاب الجديدة، أو طلب خاص مدفوع للألعاب والأجزاء القديمة.</p>
+      </div>
+
+      <div class="admin-tabs request-type-tabs" role="tablist">
+        <button class="admin-tab is-active" data-request-tab="general" type="button" role="tab" aria-selected="true">طلب عام (مجاني)</button>
+        <button class="admin-tab" data-request-tab="private" type="button" role="tab" aria-selected="false">طلب خاص (مدفوع)</button>
+      </div>
+
+      <!-- ===== طلب عام (مجاني) — مرئي للجميع ===== -->
+      <div class="request-type-panel is-active" id="request-panel-general">
+        <p class="disclaimer-note">أي لعبة تصدر حديثاً نترجمها مجاناً لجميع المستخدمين.</p>
+
+        <div class="section-head-row request-panel-head">
+          <p class="lede">طلبات مقترحة من المجتمع لترجمة ألعاب جديدة صدرت حديثاً — مرئية للجميع.</p>
+          <button class="btn btn-primary" type="button" id="toggle-request-form-general">+ طلب عام جديد</button>
+        </div>
+
+        <form class="panel request-form" id="request-form-general" novalidate hidden>
+          <div class="panel-head">
+            <h2>تقديم طلب عام</h2>
           </div>
-          <button class="btn btn-primary" type="button" id="toggle-request-form">+ طلب جديد</button>
+          <div class="form-grid">
+            <label class="field" data-field="اسم اللعبة">
+              <span>اسم اللعبة</span>
+              <input type="text" id="req-general-game-name" required placeholder="مثال: Ashfall Reach" maxlength="200" />
+            </label>
+            <label class="field" data-field="المحرك">
+              <span>المحرك <span class="field-hint">(لو تعرفون)</span></span>
+              <input type="text" id="req-general-engine" placeholder="مثال: Unity" maxlength="200" />
+            </label>
+            <label class="field field-wide" data-field="رابط اللعبة">
+              <span>رابط اللعبة (Steam أو غيره) <span class="field-hint">(لو تعرفون)</span></span>
+              <input type="text" id="req-general-game-link" placeholder="https://" maxlength="500" />
+            </label>
+            <label class="field field-wide" data-field="ملاحظات إضافية">
+              <span>ملاحظات إضافية</span>
+              <textarea id="req-general-notes" rows="3" placeholder="أي تفاصيل تساعد الفريق على تقييم الطلب" maxlength="2000"></textarea>
+            </label>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-ghost" id="cancel-request-form-general">إلغاء</button>
+            <button type="submit" class="btn btn-primary">إرسال الطلب</button>
+          </div>
+          <p class="form-note form-error" id="form-error-general" hidden></p>
+          <p class="form-note" id="form-note-general" hidden>تم إرسال طلبك بنجاح، سيراجعه الفريق قريبًا.</p>
+        </form>
+
+        <p class="form-note form-error" id="req-list-error-general" hidden></p>
+        <div class="req-list">
+          <div class="req-row req-row-head">
+            <span>اللعبة</span>
+            <span>المحرك</span>
+            <span>الحالة</span>
+            <span>التاريخ</span>
+          </div>
+          <div id="req-rows-general"></div>
         </div>
       </div>
 
-      <form class="panel request-form" id="request-form" novalidate hidden>
-        <div class="panel-head">
-          <h2>تقديم طلب ترجمة</h2>
-        </div>
-        <div class="form-grid">
-          <label class="field" data-field="اسم اللعبة">
-            <span>اسم اللعبة</span>
-            <input type="text" id="req-game-name" required placeholder="مثال: Ashfall Reach" maxlength="200" />
-          </label>
-          <label class="field" data-field="المحرك">
-            <span>المحرك <span class="field-hint">(لو تعرفون)</span></span>
-            <input type="text" id="req-engine" placeholder="مثال: Unity" maxlength="200" />
-          </label>
-          <label class="field field-wide" data-field="رابط اللعبة">
-            <span>رابط اللعبة (Steam أو غيره) <span class="field-hint">(لو تعرفون)</span></span>
-            <input type="text" id="req-game-link" placeholder="https://" maxlength="500" />
-          </label>
-          <label class="field field-wide" data-field="ملاحظات إضافية">
-            <span>ملاحظات إضافية</span>
-            <textarea id="req-notes" rows="3" placeholder="أي تفاصيل تساعد الفريق على تقييم الطلب" maxlength="2000"></textarea>
-          </label>
-        </div>
-        <div class="form-actions">
-          <button type="button" class="btn btn-ghost" id="cancel-request-form">إلغاء</button>
-          <button type="submit" class="btn btn-primary">إرسال الطلب</button>
-        </div>
-        <p class="form-note form-error" id="form-error" hidden></p>
-        <p class="form-note" id="form-note" hidden>تم إرسال طلبك بنجاح، سيراجعه الفريق قريبًا.</p>
-      </form>
+      <!-- ===== طلب خاص (مدفوع) — طلباتك الخاصة فقط ===== -->
+      <div class="request-type-panel" id="request-panel-private">
+        <p class="disclaimer-note">الألعاب أو الأجزاء القديمة تحتاج طلباً خاصاً برسوم 10$ للعبة الواحدة.</p>
+        <p class="disclaimer-note">الوقت المتوقع لترجمة طلب خاص يتراوح بين يوم إلى يوم ونصف عمل حسب حجم اللعبة.</p>
 
-      <p class="form-note form-error" id="req-list-error" hidden></p>
-      <div class="req-list">
-        <div class="req-row req-row-head">
-          <span>اللعبة</span>
-          <span>المحرك</span>
-          <span>الحالة</span>
-          <span>التاريخ</span>
+        <!-- معلومات الدفع الحقيقية لم تُجهّز بعد — هذه الكتلة عنصر نائب واضح
+             حتى يسهل استبدال نصها بتفاصيل الدفع الفعلية لاحقاً دون أي إعادة
+             هيكلة. -->
+        <div class="payment-placeholder">
+          <p class="payment-placeholder-label">معلومات الدفع (عنصر نائب)</p>
+          <p>معلومات الدفع ستُضاف قريباً من قبل الفريق</p>
         </div>
-        <div id="req-rows"></div>
+
+        <div class="section-head-row request-panel-head">
+          <p class="lede">طلباتك الخاصة فقط — لا يراها أحد غيرك وفريق الإدارة.</p>
+          <button class="btn btn-primary" type="button" id="toggle-request-form-private">+ طلب خاص جديد</button>
+        </div>
+
+        <form class="panel request-form" id="request-form-private" novalidate hidden>
+          <div class="panel-head">
+            <h2>تقديم طلب خاص</h2>
+          </div>
+          <div class="form-grid">
+            <label class="field" data-field="اسم اللعبة">
+              <span>اسم اللعبة</span>
+              <input type="text" id="req-private-game-name" required placeholder="مثال: Ashfall Reach" maxlength="200" />
+            </label>
+            <label class="field" data-field="المحرك">
+              <span>المحرك <span class="field-hint">(لو تعرفون)</span></span>
+              <input type="text" id="req-private-engine" placeholder="مثال: Unity" maxlength="200" />
+            </label>
+            <label class="field field-wide" data-field="رابط اللعبة">
+              <span>رابط اللعبة (Steam أو غيره) <span class="field-hint">(لو تعرفون)</span></span>
+              <input type="text" id="req-private-game-link" placeholder="https://" maxlength="500" />
+            </label>
+            <label class="field field-wide" data-field="ملاحظات إضافية">
+              <span>ملاحظات إضافية <span class="field-hint">(اذكر الجزء أو الفصل المطلوب إن كان قديماً)</span></span>
+              <textarea id="req-private-notes" rows="3" placeholder="أي تفاصيل تساعد الفريق على تقييم الطلب" maxlength="2000"></textarea>
+            </label>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-ghost" id="cancel-request-form-private">إلغاء</button>
+            <button type="submit" class="btn btn-primary">إرسال الطلب</button>
+          </div>
+          <p class="form-note form-error" id="form-error-private" hidden></p>
+          <p class="form-note" id="form-note-private" hidden>تم إرسال طلبك بنجاح، سيراجعه الفريق قريبًا.</p>
+        </form>
+
+        <p class="form-note form-error" id="req-list-error-private" hidden></p>
+        <div class="req-list">
+          <div class="req-row req-row-head req-row-private">
+            <span>اللعبة</span>
+            <span>المحرك</span>
+            <span>الحالة</span>
+            <span>الدفع</span>
+            <span>التاريخ</span>
+            <span></span>
+          </div>
+          <div id="req-rows-private"></div>
+        </div>
       </div>
     </section>
 
@@ -386,11 +493,15 @@
         <p class="lede">مشاريع اكتملت ترجمتها بالكامل ومتاحة للتحميل.</p>
       </div>
 
-      <div class="empty-state">
+      <p class="form-note form-error" id="games-list-error" hidden></p>
+
+      <div class="project-grid" id="games-grid" hidden></div>
+
+      <div class="empty-state" id="games-empty-state">
         <div class="empty-state-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v10m0 0-4-4m4 4 4-4"/><path d="M5 16v2.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V16"/></svg>
         </div>
-        <h2>قريبًا</h2>
+        <h2>لا توجد ألعاب منشورة بعد</h2>
         <p>سنعرض هنا الألعاب المترجمة المتاحة للتحميل فور اكتمال أول مشروع.</p>
       </div>
     </section>
@@ -405,7 +516,7 @@
 
       <form class="settings-form" id="settings-form">
 
-        <div class="panel" id="profile-panel" hidden>
+        <div class="panel" id="profile-panel">
           <div class="panel-head"><h2>الملف الشخصي</h2></div>
           <div class="form-grid">
             <label class="field field-wide">
@@ -416,18 +527,6 @@
               <span>البريد الإلكتروني</span>
               <input type="email" id="profile-email-input" readonly />
             </label>
-          </div>
-        </div>
-
-        <div class="panel" id="profile-gate">
-          <div class="empty-state empty-state-mini">
-            <div class="empty-state-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c1.2-3.6 4-5.4 7-5.4s5.8 1.8 7 5.4"/></svg>
-            </div>
-            <div>
-              <p>سجّل الدخول لعرض ملفك الشخصي.</p>
-              <button class="btn btn-primary btn-small" type="button" id="profile-login-btn">تسجيل الدخول</button>
-            </div>
           </div>
         </div>
 

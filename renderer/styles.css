@@ -172,7 +172,8 @@ body{
   background:var(--sand-2);
 }
 
-/* Auth: guest button / logged-in user chip in the top bar ---------------- */
+/* Auth: signed-in user chip in the top bar (topbar only renders once
+   signed in, so this has no "logged out" variant to style) -------------- */
 .user-chip:not([hidden]){
   display:flex;
   align-items:center;
@@ -199,7 +200,84 @@ body{
 }
 
 /* ==========================================================================
-   Login modal (mock — no real backend)
+   Auth screen — the only thing rendered when there is no valid session.
+   Full-viewport, replaces the topbar + app shell entirely (see
+   renderer.js's "App bootstrap / auth gate" section).
+   ========================================================================== */
+
+.auth-screen{
+  position:fixed;
+  inset:0;
+  z-index:1000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+  background:var(--sand);
+}
+
+.auth-card{
+  width:100%;
+  max-width:380px;
+  background:var(--sand-2);
+  border:1px solid var(--line);
+  border-radius:var(--r);
+  padding:26px 26px 22px;
+  box-shadow:0 20px 48px rgba(0,0,0,.12);
+}
+
+.auth-wordmark{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:2px;
+  margin-bottom:20px;
+  text-align:center;
+}
+.auth-wordmark .wordmark-sub{
+  border-inline-start:none;
+  padding-inline-start:0;
+}
+
+.auth-toggle{
+  display:flex;
+  background:rgba(var(--ink-rgb),.06);
+  border-radius:99px;
+  padding:3px;
+  margin-bottom:18px;
+}
+.auth-toggle-btn{
+  flex:1 1 50%;
+  appearance:none;
+  border:none;
+  background:transparent;
+  border-radius:99px;
+  padding:8px 10px;
+  font-family:var(--f-body);
+  font-size:13px;
+  font-weight:700;
+  color:var(--ink-soft);
+  cursor:pointer;
+  transition:background-color .15s ease, color .15s ease;
+}
+.auth-toggle-btn.is-active{
+  background:var(--sand-2);
+  color:var(--clay);
+  box-shadow:0 1px 4px rgba(0,0,0,.12);
+}
+
+.auth-form .form-grid{
+  grid-template-columns:1fr;
+}
+.auth-form .form-actions{
+  margin-top:14px;
+}
+.auth-form .btn-primary{
+  width:100%;
+}
+
+/* ==========================================================================
+   Modals (join-the-team)
    ========================================================================== */
 
 .modal-overlay:not([hidden]){
@@ -261,13 +339,6 @@ body{
   margin:0 0 14px;
   color:var(--ink-soft);
   font-size:13px;
-}
-
-.modal-hint{
-  margin:10px 0 0;
-  color:var(--ink-soft);
-  font-size:11.5px;
-  font-weight:400;
 }
 
 /* ==========================================================================
@@ -342,7 +413,7 @@ body{
   border-top:1px solid var(--line);
 }
 .sidebar-foot p{
-  margin:0 0 2px;
+  margin:0;
   font-size:12.5px;
   color:var(--ink);
   font-weight:500;
@@ -353,36 +424,6 @@ body{
   font-size:11.5px;
 }
 
-/* Admin entry point: an unobtrusive text link, not a prominent button —
-   invisible-in-spirit until someone deliberately looks for it. */
-.sidebar-admin{
-  margin-top:8px;
-  padding-top:8px;
-  border-top:1px dashed var(--line);
-}
-.admin-entry-link{
-  appearance:none;
-  border:none;
-  background:none;
-  padding:0;
-  color:var(--ink-soft);
-  font-size:11px;
-  font-weight:400;
-  cursor:pointer;
-  text-decoration:underline;
-  text-decoration-color:transparent;
-  transition:color .15s ease, text-decoration-color .15s ease;
-}
-.admin-entry-link:hover{
-  color:var(--clay);
-  text-decoration-color:currentColor;
-}
-.sidebar-admin-status{
-  margin:0 0 3px;
-  font-size:11px;
-  color:var(--clay);
-  font-weight:700;
-}
 
 .content{
   flex:1 1 auto;
@@ -901,6 +942,48 @@ body{
   color:var(--red);
 }
 
+/* Static informational callouts on the request panels (not tied to form
+   submit feedback like .form-note above) --------------------------------- */
+.disclaimer-note{
+  background:rgba(var(--ochre-rgb),.12);
+  border:1px solid rgba(var(--ochre-rgb),.35);
+  border-radius:8px;
+  padding:10px 14px;
+  margin:0 0 10px;
+  font-size:13px;
+  font-weight:500;
+  color:var(--ink);
+}
+
+/* Obviously-a-placeholder block: dashed border matches .empty-state's
+   "not built yet" visual language, so a future edit can drop real payment
+   details into the second <p> without restructuring anything. */
+.payment-placeholder{
+  border:1px dashed rgba(var(--clay-rgb),.45);
+  background:rgba(var(--clay-rgb),.06);
+  border-radius:var(--r);
+  padding:14px 16px;
+  margin:0 0 14px;
+}
+.payment-placeholder-label{
+  margin:0 0 4px;
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.4px;
+  text-transform:uppercase;
+  color:var(--clay);
+}
+.payment-placeholder p:last-child{
+  margin:0;
+  font-size:13.5px;
+  color:var(--ink-soft);
+}
+
+.request-type-panel{ display:none; }
+.request-type-panel.is-active{ display:block; }
+
+.request-panel-head{ margin-bottom:14px; }
+
 .req-list{
   background:var(--sand-2);
   border:1px solid var(--line);
@@ -924,6 +1007,11 @@ body{
   color:var(--ink-soft);
   font-weight:700;
   font-size:11.5px;
+}
+
+/* طلب خاص list adds a "paid" pill and a download-button column */
+.req-row.req-row-private{
+  grid-template-columns:1.3fr .9fr .85fr .8fr .85fr .95fr;
 }
 
 .req-game{ font-weight:600; }
@@ -1007,9 +1095,10 @@ body{
   white-space:nowrap;
 }
 
-.admin-row-requests{ grid-template-columns:1.2fr .8fr 1fr 1.4fr .95fr .8fr .7fr; }
+.admin-row-requests{ grid-template-columns:.55fr 1fr .65fr .85fr 1.1fr .8fr 1.7fr .65fr .55fr; }
 .admin-row-comments{ grid-template-columns:.9fr 2fr .8fr .6fr; }
 .admin-row-applications{ grid-template-columns:.9fr 1.1fr 1.6fr .95fr .8fr .7fr; }
+.admin-row-games{ grid-template-columns:1.3fr .9fr .8fr .8fr 1.3fr .8fr .7fr; }
 
 .admin-cell-truncate{
   overflow:hidden;
@@ -1061,6 +1150,80 @@ body{
   opacity:.5;
   cursor:default;
 }
+
+.admin-cell-dim{ color:var(--ink-soft); }
+
+/* Admin: paid toggle + delivery-URL mini-form for طلب خاص rows ----------- */
+.admin-payment-controls{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.admin-paid-toggle{
+  appearance:none;
+  align-self:flex-start;
+  border:1px solid rgba(var(--palm-rgb),.4);
+  background:transparent;
+  color:var(--palm);
+  border-radius:99px;
+  padding:3px 10px;
+  font-family:var(--f-body);
+  font-size:11px;
+  font-weight:700;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.admin-paid-toggle.is-paid{
+  background:rgba(var(--palm-rgb),.16);
+}
+.admin-paid-toggle:disabled{ opacity:.5; cursor:default; }
+
+.admin-delivery-row{
+  display:flex;
+  gap:6px;
+  align-items:center;
+}
+.admin-delivery-input{
+  flex:1 1 auto;
+  min-width:0;
+  font-family:var(--f-body);
+  font-size:11.5px;
+  color:var(--ink);
+  background:var(--sand);
+  border:1px solid var(--line);
+  border-radius:6px;
+  padding:4px 8px;
+}
+.admin-delivery-input:focus{
+  outline:none;
+  border-color:var(--clay);
+  box-shadow:0 0 0 2px rgba(var(--clay-rgb),.15);
+}
+.admin-delivery-save{
+  flex:0 0 auto;
+  font-size:11.5px;
+}
+
+/* Admin: publish / unpublish toggle for translated_games rows ------------ */
+.admin-publish-toggle{
+  appearance:none;
+  border:1px solid rgba(var(--ochre-rgb),.4);
+  background:transparent;
+  color:var(--clay-deep);
+  border-radius:99px;
+  padding:4px 10px;
+  font-family:var(--f-body);
+  font-size:11.5px;
+  font-weight:700;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.admin-publish-toggle.is-published{
+  background:rgba(var(--palm-rgb),.16);
+  border-color:rgba(var(--palm-rgb),.4);
+  color:var(--palm);
+}
+.admin-publish-toggle:disabled{ opacity:.5; cursor:default; }
 
 /* ==========================================================================
    Translated games (download list)
