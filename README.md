@@ -6,13 +6,15 @@ into Arabic by hand. This shares the public Harf website's visual identity
 
 ## Status
 
-**UI-only foundation.** This is the initial shell: a working Electron window
-with sidebar navigation between five sections (Dashboard, Projects,
-Translation Requests, Translated Games, Settings), all populated with
-static placeholder content. There is no backend, no file I/O, and no real
-translation logic yet — navigation and a couple of small in-page
-interactions (toggling the "new request" form, a fake "preparing download"
-note on the Translated Games cards, a light/dark theme toggle persisted to
+A working Electron window with sidebar navigation between five sections
+(Dashboard, Projects, Translation Requests, Translated Games, Settings).
+Comments, translation requests, and join-the-team applications are **real
+data**, read from and written to a live Supabase (Postgres) project over
+its REST API (see `renderer/supabase.js` and `SECURITY.md`). Projects and
+Translated Games are still placeholders, shown as "قريبًا" (coming soon)
+empty states. There is still no file I/O and no real translation logic —
+a couple of small in-page interactions (a fake "preparing download" note
+on the Translated Games cards, a light/dark theme toggle persisted to
 `localStorage`, a fake "settings saved" note) are implemented client-side
 in `renderer/renderer.js` for demonstration purposes only.
 
@@ -57,10 +59,14 @@ npm start
 
 ## Next steps (not yet implemented)
 
-- Wire real project/request data from a backend or local store.
+- Real project tracking and Translated Games delivery (currently "قريبًا"
+  empty states) — see `renderer/supabase.js` for the tables already wired
+  up for requests/comments/join-applications.
 - Persist settings (profile, notifications) — only the theme choice is
   persisted today.
 - Real download delivery for Translated Games (currently a fake
   "preparing download" confirmation with no file behind it).
-- Wire the "join the team" CTA to an actual application flow.
+- Replace the mock login with real Supabase Auth (or similar) if
+  per-user accountability is ever needed — see "Author names are
+  self-reported, not verified" in `SECURITY.md`.
 - Translation editor and file/import tooling via `preload.js` + IPC.

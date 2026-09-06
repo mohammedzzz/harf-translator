@@ -1,6 +1,6 @@
 {
   "name": "harf-translator",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Harf Translator — internal desktop tool for the Harf volunteer Arabic game translation team.",
   "main": "main.js",
   "author": "Harf Team",

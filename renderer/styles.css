@@ -638,6 +638,12 @@ body{
   font-size:12.5px;
 }
 .comment-list p{ margin:0; font-size:13.5px; }
+.comment-empty{
+  padding:14px 4px;
+  text-align:center;
+  color:var(--ink-soft);
+  font-size:13px;
+}
 .muted{ color:var(--ink-soft); }
 .small{ font-size:12px; }
 
@@ -701,6 +707,59 @@ body{
   margin:0;
   font-size:12px;
   color:var(--ink-soft);
+}
+
+/* ==========================================================================
+   Empty / "coming soon" states — Projects, Translated Games (full-page),
+   and a smaller variant for the Dashboard's mini-progress panel.
+   ========================================================================== */
+
+.empty-state{
+  background:var(--sand-2);
+  border:1px dashed var(--line);
+  border-radius:var(--r);
+  padding:48px 24px;
+  text-align:center;
+  color:var(--ink-soft);
+}
+.empty-state-icon{
+  width:40px;
+  height:40px;
+  margin:0 auto 14px;
+  color:var(--clay);
+}
+.empty-state-icon svg{ width:100%; height:100%; }
+.empty-state h2{
+  margin:0 0 6px;
+  font-family:var(--f-display);
+  font-weight:700;
+  font-size:22px;
+  color:var(--ink);
+}
+.empty-state p{
+  margin:0 auto;
+  max-width:44ch;
+  font-size:13.5px;
+}
+
+.empty-state-mini{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:16px;
+  text-align:start;
+  border-style:solid;
+}
+.empty-state-mini .empty-state-icon{
+  width:26px;
+  height:26px;
+  margin:0;
+  flex:0 0 26px;
+}
+.empty-state-mini p{
+  margin:0;
+  font-size:13px;
+  max-width:none;
 }
 
 .project-meta{
@@ -811,7 +870,7 @@ body{
 
 .req-row{
   display:grid;
-  grid-template-columns:1.4fr 1.1fr 1.1fr .9fr 1.2fr .9fr;
+  grid-template-columns:1.6fr 1fr 1.1fr .9fr;
   gap:10px;
   align-items:center;
   padding:10px 14px;
@@ -828,6 +887,13 @@ body{
 }
 
 .req-game{ font-weight:600; }
+
+.req-empty{
+  padding:26px 14px;
+  text-align:center;
+  color:var(--ink-soft);
+  font-size:13.5px;
+}
 
 .pill{
   display:inline-block;
